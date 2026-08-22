@@ -1,0 +1,1734 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="ProducaoApp"/>
+<meta name="theme-color" content="#38BDF8"/>
+<link rel="manifest" href="manifest.json"/>
+<link rel="apple-touch-icon" href="icon-512.svg"/>
+<title>ProducaoApp — Tapeçaria &amp; Marcenaria</title>
+<script src="https://unpkg.com/@zxing/library@0.20.0/umd/index.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+:root{
+  --bg:#080D18;--surf:#0F1626;--card:#162035;--bdr:#1E3050;
+  --acc:#38BDF8;--pur:#A78BFA;--grn:#22C55E;--yel:#F59E0B;--red:#EF4444;--org:#FB923C;
+  --txt:#F1F5F9;--mut:#94A3B8;--dim:#3D5270;--tap:#A78BFA;--mar:#38BDF8;
+}
+body{background:var(--bg);color:var(--txt);font-family:Inter,system-ui,sans-serif;min-height:100vh;overscroll-behavior:none;}
+input,select,textarea{font-family:inherit;}
+button{font-family:inherit;cursor:pointer;}
+
+/* ─ LAYOUT ─ */
+#app{display:flex;flex-direction:column;min-height:100vh;max-width:600px;margin:0 auto;}
+#topbar{background:var(--surf);border-bottom:1px solid var(--bdr);padding:10px 14px;position:sticky;top:0;z-index:100;display:flex;justify-content:space-between;align-items:center;}
+#content{flex:1;padding:14px 14px 90px;overflow-y:auto;}
+#navbar{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:600px;background:var(--surf);border-top:1px solid var(--bdr);z-index:100;display:flex;justify-content:space-around;padding:6px 0 max(10px,env(safe-area-inset-bottom));}
+.nav-btn{display:flex;flex-direction:column;align-items:center;gap:1px;background:none;border:none;padding:4px 6px;opacity:.4;transition:opacity .2s;}
+.nav-btn.active{opacity:1;}
+.nav-btn span:first-child{font-size:20px;}
+.nav-btn span:last-child{font-size:8px;font-weight:700;}
+.nav-pg{display:flex;flex-direction:column;align-items:center;background:none;border:none;padding:4px 6px;opacity:.6;}
+.nav-pg span:first-child{font-size:18px;color:var(--mut);}
+.nav-pg span:last-child{font-size:8px;color:var(--dim);}
+
+/* ─ COMPONENTS ─ */
+.card{background:var(--card);border:1px solid var(--bdr);border-radius:14px;padding:16px;margin-bottom:0;}
+.card.bc-acc{border-color:rgba(56,189,248,.3);}
+.card.bc-grn{border-color:rgba(34,197,94,.3);}
+.card.bc-red{border-color:rgba(239,68,68,.3);}
+.card.bc-yel{border-color:rgba(245,158,11,.3);}
+.card.bc-org{border-color:rgba(251,146,60,.3);}
+.card.bc-tap{border-color:rgba(167,139,250,.3);}
+.card.bc-mar{border-color:rgba(56,189,248,.3);}
+.sl{color:var(--mut);font-size:10px;text-transform:uppercase;letter-spacing:1.2px;margin-bottom:8px;display:block;}
+.col{display:flex;flex-direction:column;gap:14px;}
+.row{display:flex;gap:10px;flex-wrap:wrap;}
+.kpi{flex:1;min-width:90px;background:var(--card);border:1px solid var(--bdr);border-radius:14px;padding:14px;}
+.kpi .lbl{color:var(--mut);font-size:10px;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px;}
+.kpi .val{font-weight:800;line-height:1;}
+.kpi .sub{color:var(--dim);font-size:10px;margin-top:3px;}
+.badge{padding:3px 9px;border-radius:99px;font-size:11px;font-weight:600;display:inline-block;}
+.bar-wrap{background:var(--bdr);border-radius:99px;overflow:hidden;flex:1;}
+.bar-fill{height:100%;border-radius:99px;transition:width .5s;}
+.btn{padding:11px 16px;border-radius:9px;border:none;font-weight:700;font-size:14px;cursor:pointer;transition:background .2s;}
+.btn.outline{background:transparent;border:1px solid var(--bdr);}
+.btn.full{width:100%;}
+.btn.sm{padding:6px 12px;font-size:12px;}
+.inp-wrap{display:flex;flex-direction:column;gap:4px;}
+.inp-lbl{color:var(--mut);font-size:11px;}
+input,select{width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--bdr);background:var(--surf);color:var(--txt);font-size:14px;outline:none;}
+select option{background:var(--card);color:var(--txt);}
+.divider{border:none;border-top:1px solid var(--bdr);}
+.clickrow{cursor:pointer;padding:10px 0;border-bottom:1px solid var(--bdr);display:flex;align-items:center;gap:10px;}
+.dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.tags{display:flex;flex-wrap:wrap;gap:6px;}
+.tag{padding:5px 10px;border-radius:99px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid var(--bdr);background:transparent;color:var(--dim);}
+.tag.active-acc{border-color:var(--acc);background:rgba(56,189,248,.15);color:var(--acc);}
+.tag.active-red{border-color:var(--red);background:rgba(239,68,68,.15);color:var(--red);}
+.tag.active-org{border-color:var(--org);background:rgba(251,146,60,.15);color:var(--org);}
+.tag.active-grn{border-color:var(--grn);background:rgba(34,197,94,.15);color:var(--grn);}
+.tag.active-yel{border-color:var(--yel);background:rgba(245,158,11,.15);color:var(--yel);}
+
+/* ─ LOGIN ─ */
+#login-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:32px 24px;background:var(--bg);}
+.login-logo svg{filter:drop-shadow(0 0 24px rgba(56,189,248,.4));}
+.login-title{font-size:22px;font-weight:800;color:var(--txt);margin:20px 0 4px;text-align:center;}
+.login-sub{color:var(--dim);font-size:12px;margin-bottom:32px;text-align:center;}
+.login-card{width:100%;max-width:360px;background:var(--card);border:1px solid var(--bdr);border-radius:18px;padding:28px 24px;}
+.login-err{color:var(--red);font-size:12px;margin-top:8px;text-align:center;display:none;}
+.login-footer{margin-top:24px;color:var(--dim);font-size:10px;text-align:center;}
+
+/* ─ GAUGE SVG ─ */
+.gauge-wrap{display:flex;justify-content:center;}
+
+/* ─ PROGRESS BUTTONS ─ */
+.prog-btns{display:flex;gap:6px;justify-content:center;margin-top:10px;}
+.prog-main{width:50px;height:50px;border-radius:12px;font-size:24px;font-weight:800;}
+.prog-sm{padding:5px 12px;border-radius:8px;font-size:12px;font-weight:600;}
+
+/* ─ SCROLL ─ */
+#content::-webkit-scrollbar{width:0;}
+
+/* ─ LINHAS INPUT DROPDOWN ─ */
+.linha-wrap{position:relative;}
+.linha-dropdown{position:absolute;top:100%;left:0;right:0;background:var(--card);border:1px solid var(--bdr);border-radius:8px;z-index:200;max-height:160px;overflow-y:auto;margin-top:2px;}
+.linha-opt{padding:10px 14px;color:var(--txt);font-size:13px;cursor:pointer;border-bottom:1px solid var(--bdr);}
+.linha-opt:hover{background:var(--surf);}
+
+/* ─ APONTAMENTO CARD ─ */
+.apoint-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;border:1px solid var(--bdr);cursor:pointer;margin-bottom:6px;transition:background .2s;}
+.apoint-row.presente{background:rgba(34,197,94,.12);border-color:rgba(34,197,94,.4);}
+
+/* ─ SETOR BADGE ─ */
+.setor-hdr{font-weight:700;font-size:12px;margin-bottom:6px;margin-top:4px;}
+
+/* ─ NOTIFICATIONS ─ */
+#toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--grn);color:#000;padding:10px 20px;border-radius:99px;font-weight:700;font-size:13px;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap;}
+#toast.show{opacity:1;}
+
+@media(min-width:600px){
+  #app{box-shadow:0 0 80px rgba(0,0,0,.5);}
+  #navbar{border-radius:0;}
+}
+
+/* ─ SCANNER MODAL ─ */
+#scanner-modal{position:fixed;inset:0;background:#000;z-index:1000;display:none;flex-direction:column;}
+#scanner-modal.show{display:flex;}
+#scanner-video{width:100%;flex:1;object-fit:cover;background:#000;}
+#scanner-topbar{background:rgba(8,13,24,.9);padding:14px 16px;display:flex;justify-content:space-between;align-items:center;position:absolute;top:0;left:0;right:0;z-index:10;}
+#scanner-close{background:rgba(255,255,255,.1);border:none;color:#fff;width:36px;height:36px;border-radius:50%;font-size:20px;cursor:pointer;}
+#scanner-frame{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:260px;height:260px;border:3px solid var(--acc);border-radius:20px;box-shadow:0 0 0 9999px rgba(0,0,0,.5);}
+#scanner-status{position:absolute;bottom:30px;left:0;right:0;text-align:center;color:#fff;font-size:14px;padding:10px;}
+#scanner-result{position:absolute;bottom:0;left:0;right:0;background:var(--card);padding:20px;border-radius:20px 20px 0 0;display:none;z-index:20;}
+#scanner-result.show{display:block;}
+
+/* ─ FAB SCANNER BUTTON ─ */
+#fab-scan{position:fixed;bottom:78px;right:16px;width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#38BDF8,#A78BFA);border:none;box-shadow:0 4px 16px rgba(56,189,248,.5);display:flex;align-items:center;justify-content:center;font-size:24px;z-index:90;cursor:pointer;}
+</style>
+</head>
+<body>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- LOGIN SCREEN -->
+<div id="login-screen">
+  <div class="login-logo">
+    <svg width="100" height="100" viewBox="0 0 512 512">
+      <defs>
+        <linearGradient id="lg1" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#0A0F1E"/><stop offset="100%" stop-color="#0F2040"/></linearGradient>
+        <linearGradient id="lg2" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#38BDF8"/><stop offset="60%" stop-color="#A78BFA"/><stop offset="100%" stop-color="#22C55E"/></linearGradient>
+      </defs>
+      <rect width="512" height="512" rx="110" fill="url(#lg1)"/>
+      <circle cx="256" cy="256" r="195" fill="none" stroke="#1E3050" stroke-width="18"/>
+      <circle cx="256" cy="256" r="195" fill="none" stroke="url(#lg2)" stroke-width="18" stroke-dasharray="920 307" stroke-dashoffset="77" stroke-linecap="round"/>
+      <circle cx="256" cy="256" r="130" fill="#0D1829"/>
+      <circle cx="256" cy="256" r="108" fill="none" stroke="#1A2A40" stroke-width="14" stroke-dasharray="509 170" stroke-dashoffset="42" stroke-linecap="round"/>
+      <circle cx="256" cy="256" r="108" fill="none" stroke="#38BDF8" stroke-width="14" stroke-dasharray="402 277" stroke-dashoffset="42" stroke-linecap="round"/>
+      <text x="256" y="242" text-anchor="middle" fill="#38BDF8" font-size="52" font-weight="800" font-family="Inter,Arial,sans-serif">OEE</text>
+      <text x="256" y="278" text-anchor="middle" fill="#94A3B8" font-size="22" font-family="Inter,Arial,sans-serif" letter-spacing="2">PROD</text>
+      <circle cx="174" cy="378" r="7" fill="#22C55E"/>
+      <circle cx="256" cy="392" r="7" fill="#38BDF8"/>
+      <circle cx="338" cy="378" r="7" fill="#A78BFA"/>
+    </svg>
+  </div>
+  <div class="login-title">ProducaoApp</div>
+  <div class="login-sub">🧵 Tapeçaria &amp; 🪚 Marcenaria · Sistema de Gestão Industrial</div>
+  <div class="login-card">
+    <div class="col" style="gap:12px;">
+      <div class="inp-wrap">
+        <span class="inp-lbl">Usuário</span>
+        <input id="login-user" type="text" placeholder="Ex: engenheiro" autocomplete="username" autocapitalize="off"/>
+      </div>
+      <div class="inp-wrap">
+        <span class="inp-lbl">Senha</span>
+        <input id="login-pass" type="password" placeholder="••••••" autocomplete="current-password"/>
+      </div>
+      <button class="btn full" style="background:var(--acc);color:#000;margin-top:4px;" onclick="doLogin()">Entrar</button>
+      <div id="login-err" class="login-err">Usuário ou senha incorretos.</div>
+    </div>
+    <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--bdr);color:var(--dim);font-size:10px;text-align:center;">
+      Usuários demo: <b style="color:var(--acc)">engenheiro / eng123</b> &nbsp;|&nbsp; <b style="color:var(--acc)">supervisor / sup123</b> &nbsp;|&nbsp; <b style="color:var(--acc)">operador / op123</b>
+    </div>
+  </div>
+  <div class="login-footer">
+    📱 Adicione à área de trabalho para usar como app<br/>
+    iOS: Compartilhar → Adicionar à Tela de Início<br/>
+    Android: Menu → Adicionar à tela inicial
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app" style="display:none;">
+  <div id="topbar">
+    <div>
+      <div style="color:var(--acc);font-weight:800;font-size:12px;letter-spacing:.6px;">🧵 TAPEÇARIA &amp; 🪚 MARCENARIA</div>
+      <div id="topbar-sub" style="color:var(--dim);font-size:10px;"></div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div id="alert-badge" style="background:var(--red);color:#fff;border-radius:99px;width:19px;height:19px;display:none;align-items:center;justify-content:center;font-size:10px;font-weight:800;"></div>
+      <div id="oee-badge" style="font-weight:800;font-size:17px;padding:3px 11px;border-radius:7px;"></div>
+      <button onclick="doLogout()" style="background:transparent;border:1px solid var(--bdr);color:var(--mut);border-radius:7px;padding:4px 8px;font-size:11px;">Sair</button>
+    </div>
+  </div>
+
+  <div id="content"></div>
+
+  <button id="fab-scan" onclick="abrirScanner('geral')" title="Escanear crachá">📷</button>
+
+  <div id="navbar"></div>
+</div>
+
+<!-- SCANNER MODAL -->
+<div id="scanner-modal">
+  <div id="scanner-topbar">
+    <div style="color:#fff;font-weight:700;font-size:14px;">📷 Escanear Crachá</div>
+    <button id="scanner-close" onclick="fecharScanner()">✕</button>
+  </div>
+  <video id="scanner-video" autoplay muted playsinline></video>
+  <div id="scanner-frame"></div>
+  <div id="scanner-status">Aponte a câmera para o código de barras ou QR Code</div>
+  <div id="scanner-result"></div>
+</div>
+
+<!-- LABEL/ETIQUETA MODAL -->
+<div id="label-modal" style="position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:1000;display:none;align-items:center;justify-content:center;padding:20px;">
+  <div style="background:var(--card);border-radius:16px;padding:20px;max-width:360px;width:100%;max-height:85vh;overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <div style="color:var(--txt);font-weight:800;font-size:16px;">🏷 Etiqueta</div>
+      <button onclick="fecharLabelModal()" style="background:rgba(255,255,255,.1);border:none;color:#fff;width:32px;height:32px;border-radius:50%;font-size:16px;cursor:pointer;">✕</button>
+    </div>
+    <div class="tags" style="margin-bottom:14px;">
+      <button id="label-tab-qr" class="tag active-acc" onclick="trocarTipoEtiqueta('qr')">QR Code</button>
+      <button id="label-tab-barcode" class="tag" onclick="trocarTipoEtiqueta('barcode')">Código de Barras</button>
+    </div>
+    <div id="label-content" style="background:#fff;border-radius:12px;padding:20px;text-align:center;min-height:180px;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+      <div style="color:#999;font-size:12px;">Gerando...</div>
+    </div>
+    <div id="label-info" style="text-align:center;margin-top:12px;"></div>
+    <div style="color:var(--dim);font-size:10px;text-align:center;margin-top:10px;">
+      📱 Tire um print desta tela ou peça para imprimir para colar no item físico
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// AUTH
+// ═══════════════════════════════════════════════════════════════
+const USERS = {
+  engenheiro:{senha:"eng123",perfil:"Engenheiro de Produção",role:"admin"},
+  supervisor:{senha:"sup123",perfil:"Supervisor de Turno",role:"super"},
+  operador:{senha:"op123",perfil:"Operador",role:"op"},
+};
+let currentUser = null;
+
+function doLogin(){
+  const u = document.getElementById('login-user').value.trim().toLowerCase();
+  const p = document.getElementById('login-pass').value;
+  if(USERS[u] && USERS[u].senha === p){
+    currentUser = {username:u,...USERS[u]};
+    document.getElementById('login-screen').style.display='none';
+    document.getElementById('app').style.display='flex';
+    initApp();
+  } else {
+    document.getElementById('login-err').style.display='block';
+  }
+}
+function doLogout(){
+  currentUser = null;
+  document.getElementById('app').style.display='none';
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('login-user').value='';
+  document.getElementById('login-pass').value='';
+  document.getElementById('login-err').style.display='none';
+}
+document.addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+
+// ═══════════════════════════════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════════════════════════════
+function uid(){return Math.random().toString(36).slice(2,7).toUpperCase();}
+function nowStr(){const d=new Date();return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');}
+function todayStr(){return new Date().toISOString().slice(0,10);}
+function elapsed(ini){const[h,m]=ini.split(':').map(Number);const b=new Date();b.setHours(h,m,0,0);return Math.max(0,Math.round((new Date()-b)/60000));}
+function turnoMin(t){
+  const m=s=>{const[h,x]=s.split(':').map(Number);return h*60+x;};
+  let almocoMin=t.almoco||0;
+  if(t.almocoInicio&&t.almocoFim){almocoMin=Math.max(0,m(t.almocoFim)-m(t.almocoInicio));}
+  return Math.max(0,m(t.fim)-m(t.inicio)-almocoMin);
+}
+function calcOEE(d,p,q){return Math.round((d/100)*(p/100)*(q/100)*100);}
+function oeeGeral(fs){const vs=Object.values(fs).map(f=>calcOEE(f.oee.disp,f.oee.perf,f.oee.qual));return Math.round(vs.reduce((a,b)=>a+b,0)/vs.length);}
+function oeeColor(v){return v>=85?'#22C55E':v>=65?'#F59E0B':'#EF4444';}
+function eficColor(v){return v>=85?'#22C55E':v>=70?'#F59E0B':'#EF4444';}
+function stColor(s){return s==='Produzindo'?'#22C55E':s==='Setup'?'#F59E0B':'#EF4444';}
+function tpmColor(s){return s==='Concluída'?'#22C55E':s==='Atrasada'?'#EF4444':'#F59E0B';}
+function getProg(fk,lid){return (APP.programacao[fk]||[]).find(p=>p.linhaId===lid);}
+function getProd(fk,pid){return (APP.catalogo[fk]||[]).find(p=>p.id===pid);}
+function getColab(id){return (APP.colaboradores||[]).find(c=>c.id===id);}
+function getSetor(nome){return (APP.setores||[]).find(s=>s.nome===nome);}
+
+const APP_DEFAULT = {
+  semana:'Semana 25/2026',
+  turno:{inicio:'06:00',fim:'14:00',almoco:60,nome:'Manhã',almocoInicio:'12:00',almocoFim:'13:00'},
+  ordensServico:[
+    {id:'OS001',numero:1,colaboradorId:'C001',setor:'Tapeçaria A',produtoId:'T01',produtoNome:'Sofá 3L Retrátil',meta:80,status:'Aberta',abertura:'06:15',fechamento:'',tempoMin:0,criadaEm:'06:00'},
+    {id:'OS002',numero:2,colaboradorId:'',setor:'Corte/Costura',produtoId:'T04',produtoNome:'Capa Estofado P',meta:60,status:'Pendente',abertura:'',fechamento:'',tempoMin:0,criadaEm:'06:00'},
+  ],
+  setores:[
+    {id:'S01',nome:'Tapeçaria A',familia:'tapecaria',responsavel:'Carlos Silva',cor:'#A78BFA'},
+    {id:'S02',nome:'Tapeçaria B',familia:'tapecaria',responsavel:'Marcos Ribeiro',cor:'#A78BFA'},
+    {id:'S03',nome:'Corte/Costura',familia:'tapecaria',responsavel:'Julia Ferreira',cor:'#A78BFA'},
+    {id:'S04',nome:'Linha MDF',familia:'marcenaria',responsavel:'Ana Paula',cor:'#38BDF8'},
+    {id:'S05',nome:'Montagem Final',familia:'marcenaria',responsavel:'Pedro Lima',cor:'#38BDF8'},
+  ],
+  catalogo:{
+    tapecaria:[{id:'T01',nome:'Sofá 3L Retrátil',ciclo:6,unidade:'pç'},{id:'T02',nome:'Poltrona Reclinável',ciclo:8,unidade:'pç'},{id:'T03',nome:'Sofá 2 Lugares',ciclo:5,unidade:'pç'},{id:'T04',nome:'Capa Estofado P',ciclo:3,unidade:'pç'},{id:'T05',nome:'Capa Estofado G',ciclo:4,unidade:'pç'}],
+    marcenaria:[{id:'M01',nome:'Rack TV 1,80m',ciclo:3,unidade:'pç'},{id:'M02',nome:'Estante MDF',ciclo:4,unidade:'pç'},{id:'M03',nome:'Criado-Mudo',ciclo:2,unidade:'pç'},{id:'M04',nome:'Guarda-Roupa 6P',ciclo:8,unidade:'pç'}],
+  },
+  programacao:{
+    tapecaria:[{linhaId:1,linhaNome:'Tapeçaria A',produtoId:'T01',meta:80},{linhaId:2,linhaNome:'Tapeçaria B',produtoId:'T02',meta:60},{linhaId:3,linhaNome:'Corte/Costura',produtoId:'T04',meta:60}],
+    marcenaria:[{linhaId:4,linhaNome:'Linha MDF',produtoId:'M01',meta:120},{linhaId:5,linhaNome:'Montagem Final',produtoId:'M01',meta:40}],
+  },
+  familias:{
+    tapecaria:{nome:'Tapeçaria',cor:'#A78BFA',icon:'🧵',oee:{disp:88,perf:76,qual:94},historico:[71,78,82,75,79],linhas:[{id:1,nome:'Tapeçaria A',status:'Produzindo',real:67,refugo:4,retrabalho:2},{id:2,nome:'Tapeçaria B',status:'Setup',real:0,refugo:0,retrabalho:0},{id:3,nome:'Corte/Costura',status:'Produzindo',real:55,refugo:3,retrabalho:1}]},
+    marcenaria:{nome:'Marcenaria',cor:'#38BDF8',icon:'🪚',oee:{disp:84,perf:80,qual:96},historico:[68,72,79,81,77],linhas:[{id:4,nome:'Linha MDF',status:'Produzindo',real:98,refugo:5,retrabalho:3},{id:5,nome:'Montagem Final',status:'Parada',real:23,refugo:0,retrabalho:2}]},
+  },
+  colaboradores:[
+    {id:'C001',nome:'Carlos Silva',registro:'MAT-1041',setor:'Tapeçaria A',horarioEntrada:'06:00',horarioSaida:'14:00',ativo:true,presente:true,horaApontamento:'06:02'},
+    {id:'C002',nome:'Marcos Ribeiro',registro:'MAT-1042',setor:'Tapeçaria B',horarioEntrada:'06:00',horarioSaida:'14:00',ativo:true,presente:true,horaApontamento:'06:05'},
+    {id:'C003',nome:'Julia Ferreira',registro:'MAT-1043',setor:'Corte/Costura',horarioEntrada:'06:00',horarioSaida:'14:00',ativo:true,presente:true,horaApontamento:'06:01'},
+    {id:'C004',nome:'Ana Paula',registro:'MAT-1044',setor:'Linha MDF',horarioEntrada:'06:00',horarioSaida:'14:00',ativo:true,presente:true,horaApontamento:'06:03'},
+    {id:'C005',nome:'Pedro Lima',registro:'MAT-1045',setor:'Montagem Final',horarioEntrada:'06:00',horarioSaida:'14:00',ativo:true,presente:false,horaApontamento:''},
+  ],
+  tarefas:[
+    {id:'TF001',titulo:'Produção Sofá 3L',colaboradorId:'C001',setor:'Tapeçaria A',linha:'Tapeçaria A',atividade:'Costura estrutural',tempoPadrao:6,inicio:'06:00',status:'Em andamento',realizado:42,meta:80},
+    {id:'TF002',titulo:'Corte de tecido',colaboradorId:'C003',setor:'Corte/Costura',linha:'Corte/Costura',atividade:'Corte padrão P',tempoPadrao:3,inicio:'06:00',status:'Em andamento',realizado:55,meta:60},
+  ],
+  planosAcao:[],
+  head:[{setor:'Tapeçaria A',plan:6,pres:5,motivo:'Atestado'},{setor:'Tapeçaria B',plan:5,pres:5,motivo:''},{setor:'Corte/Costura',plan:4,pres:4,motivo:''},{setor:'Linha MDF',plan:8,pres:7,motivo:'Falta'},{setor:'Montagem Final',plan:6,pres:4,motivo:'2 Atestados'}],
+  paradas:[{id:1,tipo:'Mecânica',causa:'Correia Transportadora',linha:'Montagem Final',inicio:'08:32',fim:'',duracao:47,status:'Aberta'},{id:2,tipo:'Setup',causa:'Troca de Molde',linha:'Tapeçaria B',inicio:'06:00',fim:'07:52',duracao:112,status:'Encerrada'}],
+  ncs:[{id:1,item:'Espuma fora de spec',qtd:4,linha:'Tapeçaria A',familia:'tapecaria',tipo:'Refugo',hora:'09:10'},{id:2,item:'Risco no MDF',qtd:5,linha:'Linha MDF',familia:'marcenaria',tipo:'Refugo',hora:'10:45'},{id:3,item:'Costura irregular',qtd:3,linha:'Corte/Costura',familia:'tapecaria',tipo:'Retrabalho',hora:'11:20'}],
+  tpm:[{id:1,equip:'Prensa Hidráulica',linha:'Tapeçaria A',tipo:'Preventiva',dataExec:'2026-06-10',proxRevisao:'2026-07-10',status:'Concluída',obs:'Óleo trocado. Pressão 150bar.',responsavel:'Mário T.',ferramentas:'Chave 17, manômetro'},{id:2,equip:'Serra Circular',linha:'Linha MDF',tipo:'Preventiva',dataExec:'2026-05-20',proxRevisao:'2026-06-20',status:'Atrasada',obs:'Aguarda lâmina 300mm.',responsavel:'',ferramentas:'Chave Allen, lâmina 300mm'},{id:3,equip:'Máq. Costura 1',linha:'Corte/Costura',tipo:'Corretiva',dataExec:'2026-06-15',proxRevisao:'2026-07-15',status:'Concluída',obs:'Tensão ajustada.',responsavel:'Julia F.',ferramentas:'Chave de fenda, agulha 90'},{id:4,equip:'Esteira Rolante',linha:'Montagem Final',tipo:'Preventiva',dataExec:'',proxRevisao:'2026-06-25',status:'Pendente',obs:'',responsavel:'',ferramentas:'Óleo, chave 19'}],
+};
+
+// Load from localStorage or default
+let APP = JSON.parse(localStorage.getItem('producao_app_data')||'null') || JSON.parse(JSON.stringify(APP_DEFAULT));
+function save(){localStorage.setItem('producao_app_data', JSON.stringify(APP));}
+function toast(msg, color){const t=document.getElementById('toast');t.textContent=msg;t.style.background=color||'#22C55E';t.style.color=color&&color!=='#22C55E'?'#fff':'#000';t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2200);}
+
+// ═══════════════════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════════════════
+const TABS=[
+  {key:'dash',icon:'⊞',label:'Dashboard'},
+  {key:'ordens',icon:'📄',label:'O.S.'},
+  {key:'oee',icon:'◎',label:'OEE'},
+  {key:'linhas',icon:'⟶',label:'Linhas'},
+  {key:'tarefas',icon:'📌',label:'Tarefas'},
+  {key:'colabs',icon:'🪪',label:'Colabor.'},
+  {key:'head',icon:'👥',label:'Head'},
+  {key:'qualidade',icon:'✓',label:'Qualidade'},
+  {key:'paradas',icon:'⏸',label:'Paradas'},
+  {key:'tpm',icon:'🔧',label:'TPM'},
+  {key:'kpis',icon:'📊',label:'KPIs'},
+  {key:'prog',icon:'📅',label:'Programa'},
+  {key:'catalogo',icon:'📦',label:'Catálogo'},
+  {key:'setores',icon:'🏭',label:'Setores'},
+  {key:'relatorio',icon:'📋',label:'Relatório'},
+  {key:'config',icon:'⚙️',label:'Config'},
+];
+const PER=5;let navPg=0;let curTab='dash';
+let tabState={}; // per-tab state
+
+function renderNav(){
+  const nb=document.getElementById('navbar');
+  const visible=TABS.slice(navPg*PER,(navPg+1)*PER);
+  const totalPg=Math.ceil(TABS.length/PER);
+  nb.innerHTML=visible.map(t=>`<button class="nav-btn${curTab===t.key?' active':''}" onclick="goTab('${t.key}')"><span style="color:${curTab===t.key?'var(--acc)':'var(--mut)'}">${t.icon}</span><span style="color:${curTab===t.key?'var(--acc)':'var(--mut)'}">${t.label}</span></button>`).join('')
+    +`<button class="nav-pg" onclick="nextNavPg()"><span>›</span><span>${navPg+1}/${totalPg}</span></button>`;
+}
+function nextNavPg(){navPg=(navPg+1)%Math.ceil(TABS.length/PER);renderNav();}
+function goTab(key){
+  curTab=key;
+  const idx=TABS.findIndex(t=>t.key===key);
+  navPg=Math.floor(idx/PER);
+  renderNav();
+  renderTab(key);
+  document.getElementById('content').scrollTop=0;
+  const fab=document.getElementById('fab-scan');
+  if(fab)fab.style.display=(key==='colabs'||key==='dash')?'flex':'none';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// HELPERS HTML
+// ═══════════════════════════════════════════════════════════════
+function h(tag,attrs,inner){return`<${tag} ${attrs}>${inner}</${tag}>`;}
+function bar(val,max,color,height=7){const pct=Math.min((val/Math.max(max,1))*100,100);return`<div class="bar-wrap" style="height:${height}px"><div class="bar-fill" style="width:${pct}%;background:${color};height:${height}px;"></div></div>`;}
+function badge(label,color){return`<span class="badge" style="background:${color}22;color:${color}">${label}</span>`;}
+function kpi(label,val,unit,color,sub,sm){const fs=sm?20:26;return`<div class="kpi"><div class="lbl">${label}</div><div class="val" style="color:${color};font-size:${fs}px">${val}<span style="font-size:${fs*.44}px;font-weight:500;margin-left:2px">${unit||''}</span></div>${sub?`<div class="sub">${sub}</div>`:''}</div>`;}
+function sl(txt){return`<span class="sl">${txt}</span>`;}
+function card(inner,bc=''){return`<div class="card${bc?' bc-'+bc:''}">${inner}</div>`;}
+function btn(label,onclick,color,extra=''){return`<button class="btn${extra}" style="background:${color};color:${color==='transparent'?'var(--acc)':'#000'}" onclick="${onclick}">${label}</button>`;}
+function inp(label,id,type,val,placeholder,extra=''){return`<div class="inp-wrap"><span class="inp-lbl">${label}</span><input type="${type}" id="${id}" value="${val||''}" placeholder="${placeholder||''}" ${extra}/></div>`;}
+function sel(label,id,opts,val){return`<div class="inp-wrap"><span class="inp-lbl">${label}</span><select id="${id}">${opts.map(o=>{const v=typeof o==='string'?o:o.v;const l=typeof o==='string'?o:o.l;return`<option value="${v}"${val===v?' selected':''}>${l}</option>`;}).join('')}</select></div>`;}
+function gauge(value,size,label,cor){
+  const r=size*.38,cx=size/2,cy=size/2,circ=2*Math.PI*r,color=cor||oeeColor(value),dash=(value/100)*circ*.75;
+  return`<svg width="${size}" height="${size*.85}" viewBox="0 0 ${size} ${size}">
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="#1E3050" stroke-width="${size*.075}" stroke-dasharray="${circ*.75} ${circ*.25}" stroke-dashoffset="${circ*.125}" stroke-linecap="round"/>
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="${size*.075}" stroke-dasharray="${dash} ${circ-dash+circ*.25}" stroke-dashoffset="${circ*.125}" stroke-linecap="round"/>
+    <text x="${cx}" y="${cy-4}" text-anchor="middle" fill="${color}" font-size="${size*.2}" font-weight="800" font-family="Inter,sans-serif">${value}%</text>
+    <text x="${cx}" y="${cy+size*.13}" text-anchor="middle" fill="#94A3B8" font-size="${size*.09}" font-family="Inter,sans-serif">${label}</text>
+  </svg>`;}
+function linhaInput(id,val,sugestoes){
+  const opts=sugestoes.map(s=>`<div class="linha-opt" onmousedown="pickLinha('${id}','${s.replace(/'/g,"\\'")}')">${s}</div>`).join('');
+  return`<div class="inp-wrap linha-wrap"><span class="inp-lbl">Linha</span><input type="text" id="${id}" value="${val||''}" placeholder="Digite ou selecione..." oninput="filterLinha('${id}')" onfocus="showLinha('${id}')" onblur="hideLinha('${id}')" autocomplete="off"/>
+  <div id="dd-${id}" class="linha-dropdown" style="display:none">${opts}</div></div>`;
+}
+function showLinha(id){const d=document.getElementById('dd-'+id);if(d)d.style.display='block';}
+function hideLinha(id){setTimeout(()=>{const d=document.getElementById('dd-'+id);if(d)d.style.display='none';},200);}
+function filterLinha(id){
+  const v=(document.getElementById(id)||{}).value||'';
+  const d=document.getElementById('dd-'+id);if(!d)return;
+  d.querySelectorAll('.linha-opt').forEach(o=>{o.style.display=o.textContent.toLowerCase().includes(v.toLowerCase())?'block':'none';});
+  d.style.display='block';
+}
+function pickLinha(id,val){const el=document.getElementById(id);if(el)el.value=val;const d=document.getElementById('dd-'+id);if(d)d.style.display='none';}
+function getLinhas(){return APP.setores.map(s=>s.nome);}
+function getFamilias(){return Object.keys(APP.familias);}
+function todasLinhasArr(){return Object.values(APP.familias).flatMap(f=>f.linhas.map(l=>l.nome));}
+
+// ═══════════════════════════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════════════════════════
+function renderDash(){
+  const oeeG=oeeGeral(APP.familias);
+  const tl=Object.entries(APP.familias).flatMap(([k,f])=>f.linhas.map(l=>{const pg=getProg(k,l.id);return{...l,meta:pg?.meta||0,fk:k,fcor:f.cor,ficon:f.icon,prod:getProd(k,pg?.produtoId)?.nome||'—'};}));
+  const tP=tl.reduce((a,l)=>a+l.meta,0),tR=tl.reduce((a,l)=>a+l.real,0),tRef=tl.reduce((a,l)=>a+l.refugo,0);
+  const hp=APP.head.reduce((a,h)=>a+h.plan,0),hpr=APP.head.reduce((a,h)=>a+h.pres,0);
+  const abertas=APP.paradas.filter(p=>p.status==='Aberta');
+  const atrasTPM=APP.tpm.filter(t=>t.status==='Atrasada').length;
+  const atrasT=(APP.tarefas||[]).filter(t=>t.meta>0&&t.realizado<t.meta*.7&&t.status==='Em andamento').length;
+  const osAbertas=(APP.ordensServico||[]).filter(o=>o.status==='Aberta');
+  const osPendentes=(APP.ordensServico||[]).filter(o=>o.status==='Pendente');
+  let alertas=abertas.length+atrasTPM+atrasT;
+  document.getElementById('oee-badge').style.background=oeeColor(oeeG)+'22';
+  document.getElementById('oee-badge').style.color=oeeColor(oeeG);
+  document.getElementById('oee-badge').textContent=oeeG+'%';
+  if(alertas>0){document.getElementById('alert-badge').style.display='flex';document.getElementById('alert-badge').textContent=alertas;}else{document.getElementById('alert-badge').style.display='none';}
+
+  const famCards=Object.entries(APP.familias).map(([k,f])=>{const v=calcOEE(f.oee.disp,f.oee.perf,f.oee.qual);return`<div style="text-align:center"><div style="color:${f.cor};font-weight:800;font-size:22px">${v}%</div><div style="color:var(--mut);font-size:11px">${f.icon} ${f.nome}</div>${bar(v,100,f.cor,5)}</div>`;}).join('');
+  const linhaRows=tl.map((l,i)=>{const efic=l.meta>0?Math.round((l.real/l.meta)*100):0;return`<div style="display:flex;align-items:center;gap:8px;padding:7px 0;${i<tl.length-1?'border-bottom:1px solid var(--bdr)':''}"><div style="width:7px;height:7px;border-radius:50%;background:${stColor(l.status)};flex-shrink:0"></div><div style="flex:1;min-width:0"><div style="color:var(--txt);font-size:12px;font-weight:600">${l.nome}</div><div style="color:${l.fcor};font-size:10px">${l.prod}</div></div>${bar(l.real,l.meta,eficColor(efic),6)}<span style="color:${eficColor(efic)};font-weight:700;font-size:12px;min-width:34px;text-align:right">${efic}%</span></div>`;}).join('');
+  const alertCard=(abertas.length>0||atrasTPM>0||atrasT>0)?card(`${sl('⚠ Alertas Ativos')}${abertas.map(p=>`<div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--bdr)"><span style="color:var(--red);font-size:12px;font-weight:600">${p.tipo} · ${p.linha}</span><span style="color:var(--yel);font-weight:700">${elapsed(p.inicio)}min</span></div>`).join('')}${atrasTPM>0?`<div style="padding:5px 0"><span style="color:var(--org);font-size:12px;font-weight:600">🔧 ${atrasTPM} manutenção(ões) atrasada(s)</span></div>`:''}${atrasT>0?`<div style="padding:5px 0"><span style="color:var(--red);font-size:12px;font-weight:600">📌 ${atrasT} tarefa(s) com atraso — plano necessário</span></div>`:''}`,'red'):'';
+
+  const osCard=(osAbertas.length>0||osPendentes.length>0)?card(`${sl('📄 Ordens de Serviço')}
+    ${osAbertas.map(o=>{const colab=getColab(o.colaboradorId);return`<div onclick="goTab('ordens')" style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--bdr);cursor:pointer"><span style="color:var(--red);font-size:12px;font-weight:600">O.S. ${String(o.numero).padStart(3,'0')} · ${colab?colab.nome:'—'}</span><span style="color:var(--yel);font-weight:700">${elapsed(o.abertura)}min</span></div>`;}).join('')}
+    ${osPendentes.length>0?`<div style="padding:6px 0;color:var(--yel);font-size:12px">🟡 ${osPendentes.length} O.S. aguardando bipagem para iniciar</div>`:''}
+  `,'acc'):'';
+
+  return `<div class="col">
+    <div class="card" style="display:flex;justify-content:space-between;align-items:center">
+      <div><div style="color:var(--txt);font-weight:700;font-size:14px">Turno ${APP.turno.nome} · ${APP.turno.inicio}–${APP.turno.fim}</div><div style="color:var(--dim);font-size:11px">${APP.semana} · ${turnoMin(APP.turno)}min disponíveis</div></div>
+      <div style="color:var(--grn);font-weight:700;font-size:12px">● EM ANDAMENTO</div>
+    </div>
+    ${card(`<div style="display:flex;justify-content:space-around;align-items:center"><div class="gauge-wrap">${gauge(oeeG,145,'OEE Geral',null)}</div><div style="display:flex;flex-direction:column;gap:14px">${famCards}</div></div>`)}
+    <div class="row">${kpi('Planejado',tP,'pç','#94A3B8','',true)}${kpi('Realizado',tR,'pç','#38BDF8',Math.round((tR/Math.max(tP,1))*100)+'% meta',true)}${kpi('Refugo',tRef,'pç','#EF4444',((tRef/Math.max(tR,1))*100).toFixed(1)+'%',true)}</div>
+    ${osCard}
+    ${card(`${sl('Linhas — '+APP.semana)}${linhaRows}`)}
+    ${alertCard}
+    <div class="row">${kpi('Presentes',hpr,'/'+hp,'#22C55E','Operadores',true)}${kpi('Absenteísmo',((hp-hpr)/hp*100).toFixed(1),'%','#F59E0B','',true)}${kpi('Min Parado',abertas.reduce((a,p)=>a+elapsed(p.inicio),0),'min','#EF4444','',true)}</div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// OEE
+// ═══════════════════════════════════════════════════════════════
+function renderOEE(){
+  const fam=tabState.oeeFam||'tapecaria';
+  const f=APP.familias[fam];
+  const v=calcOEE(f.oee.disp,f.oee.perf,f.oee.qual);
+  const famTabs=Object.entries(APP.familias).map(([k,fa])=>{const vv=calcOEE(fa.oee.disp,fa.oee.perf,fa.oee.qual);return`<button class="tag${fam===k?' active-acc':''}" onclick="setTabState('oeeFam','${k}');goTab('oee')">${fa.icon} ${fa.nome}<br/><span style="font-size:18px">${vv}%</span></button>`;}).join('');
+  const campos=[{key:'disp',label:'Disponibilidade (D)',color:f.cor},{key:'perf',label:'Performance (P)',color:'#A78BFA'},{key:'qual',label:'Qualidade (Q)',color:'#22C55E'}];
+  const camposHtml=campos.map(({key,label,color})=>`<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="color:var(--txt);font-size:12px;font-weight:600">${label}</span><span style="color:${color};font-weight:800;font-size:15px">${f.oee[key]}%</span></div>${bar(f.oee[key],100,color,7)}</div>`).join('');
+  const bench=[{l:'Classe Mundial 🏆',v:85,c:'#22C55E'},{l:'Bom',v:75,c:'#38BDF8'},{l:'Regular',v:65,c:'#F59E0B'},{l:'Crítico',v:50,c:'#EF4444'}];
+  return`<div class="col">
+    <div style="color:var(--txt);font-weight:700;font-size:18px">OEE por Família</div>
+    <div class="tags">${famTabs}</div>
+    ${card(`<div style="display:flex;flex-direction:column;align-items:center;gap:12px">${gauge(v,180,'OEE '+f.nome,f.cor)}<div style="width:100%">${camposHtml}</div><button class="btn full outline" style="color:${f.cor};border-color:${f.cor}" onclick="editOEE('${fam}')">✏ Lançar OEE ${f.nome}</button></div>`,'acc')}
+    ${card(`${sl('Benchmarks')}${bench.map(b=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="color:var(--mut);font-size:11px;width:110px">${b.l}</span>${bar(b.v,100,b.c,6)}<span style="color:${b.c};font-weight:700;font-size:12px;min-width:34px">${b.v}%</span>${v>=b.v?`<span style="color:${b.c}">◀</span>`:''}</div>`).join('')}<div style="margin-top:10px;padding:10px;background:${oeeColor(v)}15;border-radius:8px;border:1px solid ${oeeColor(v)}30"><span style="color:${oeeColor(v)};font-weight:700">${v}% — </span><span style="color:var(--mut);font-size:12px">${v>=85?'Classe Mundial! 🏆':v>=75?'Bom. Meta: 85%':v>=65?'Regular — agir!':'CRÍTICO!'}</span></div>`)}
+  </div>`;
+}
+function editOEE(fam){
+  const f=APP.familias[fam];
+  const html=`<div class="col" id="oee-edit">
+    <div style="display:flex;gap:8px;align-items:center"><button class="btn sm outline" style="color:var(--mut)" onclick="goTab('oee')">← Voltar</button><div style="color:var(--txt);font-weight:700;font-size:15px">Lançar OEE ${f.nome}</div></div>
+    ${card(`<div class="col" style="gap:10px">
+      <div><span style="color:var(--mut);font-size:11px">Disponibilidade (%)</span><input type="range" id="oee-disp" min="0" max="100" value="${f.oee.disp}" style="width:100%;accent-color:${f.cor}" oninput="document.getElementById('vdisp').textContent=this.value+'%'"/><span id="vdisp" style="color:${f.cor};font-weight:700">${f.oee.disp}%</span></div>
+      <div><span style="color:var(--mut);font-size:11px">Performance (%)</span><input type="range" id="oee-perf" min="0" max="100" value="${f.oee.perf}" style="width:100%;accent-color:#A78BFA" oninput="document.getElementById('vperf').textContent=this.value+'%'"/><span id="vperf" style="color:#A78BFA;font-weight:700">${f.oee.perf}%</span></div>
+      <div><span style="color:var(--mut);font-size:11px">Qualidade (%)</span><input type="range" id="oee-qual" min="0" max="100" value="${f.oee.qual}" style="width:100%;accent-color:#22C55E" oninput="document.getElementById('vqual').textContent=this.value+'%'"/><span id="vqual" style="color:#22C55E;font-weight:700">${f.oee.qual}%</span></div>
+      <button class="btn full" style="background:var(--grn);color:#000" onclick="saveOEE('${fam}')">✓ Salvar OEE</button>
+    </div>`)}
+  </div>`;
+  document.getElementById('content').innerHTML=html;
+}
+function saveOEE(fam){
+  APP.familias[fam].oee.disp=parseInt(document.getElementById('oee-disp').value);
+  APP.familias[fam].oee.perf=parseInt(document.getElementById('oee-perf').value);
+  APP.familias[fam].oee.qual=parseInt(document.getElementById('oee-qual').value);
+  save();toast('OEE salvo!');goTab('oee');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LINHAS
+// ═══════════════════════════════════════════════════════════════
+function renderLinhas(){
+  const fam=tabState.linhaFam||'tapecaria';
+  const f=APP.familias[fam];
+  const famTabs=Object.entries(APP.familias).map(([k,fa])=>`<button class="tag${fam===k?' active-acc':''}" onclick="setTabState('linhaFam','${k}');goTab('linhas')">${fa.icon} ${fa.nome}</button>`).join('');
+  const linhaCards=f.linhas.map((l,i)=>{const pg=getProg(fam,l.id);const meta=pg?.meta||0;const prod=getProd(fam,pg?.produtoId);const efic=meta>0?Math.round((l.real/meta)*100):0;return`<div class="card" style="cursor:pointer;margin-bottom:10px;border-color:${f.cor}30" onclick="editLinha('${fam}',${i})"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px"><div><div style="color:var(--txt);font-weight:700;font-size:14px">${l.nome}</div><div style="color:${f.cor};font-size:11px">${prod?.nome||'Sem produto'}</div></div><div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">${badge(l.status,stColor(l.status))}<span style="color:var(--dim);font-size:10px">meta: ${meta}pç</span></div></div><div style="display:flex;align-items:center;gap:8px"><span style="color:var(--dim);font-size:11px;min-width:55px">${l.real}/${meta}</span>${bar(l.real,meta,eficColor(efic),8)}<span style="color:${eficColor(efic)};font-weight:800;font-size:14px;min-width:36px">${efic}%</span></div></div>`;}).join('');
+  return`<div class="col"><div style="color:var(--txt);font-weight:700;font-size:18px">Linhas de Produção</div><div class="tags">${famTabs}</div>${linhaCards}</div>`;
+}
+function editLinha(fam,idx){
+  const l=APP.familias[fam].linhas[idx];
+  const f=APP.familias[fam];
+  const pg=getProg(fam,l.id);const meta=pg?.meta||0;
+  const prod=getProd(fam,pg?.produtoId);
+  const efic=meta>0?Math.round((l.real/meta)*100):0;
+  const html=`<div class="col" id="linha-detail">
+    <div style="display:flex;gap:8px;align-items:center"><button class="btn sm outline" style="color:var(--mut)" onclick="goTab('linhas')">← Voltar</button><div style="color:var(--txt);font-weight:700;font-size:15px;flex:1">${l.nome}</div>${badge(l.status,stColor(l.status))}</div>
+    ${card(`<div style="margin-bottom:10px"><div style="color:${f.cor};font-weight:700;font-size:14px">${prod?.nome||'Sem produto'}</div><div style="color:var(--mut);font-size:11px">Cód: ${pg?.produtoId||'—'} · Ciclo: ${prod?.ciclo||'—'}min/${prod?.unidade||'pç'}</div></div>
+    <div style="background:var(--surf);border-radius:8px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center">
+      <span style="color:var(--mut);font-size:11px">Meta do turno</span>
+      <div style="display:flex;gap:8px;align-items:center"><span style="color:var(--acc);font-weight:800;font-size:22px">${meta}<span style="font-size:12px">pç</span></span>
+      <button class="btn sm outline" style="color:var(--acc);border-color:var(--acc)" onclick="ajustarMeta('${fam}',${idx})">✏ Ajustar</button></div>
+    </div>`,'acc')}
+    <div class="row">${kpi('Meta',meta,'pç','#94A3B8','',true)}${kpi('Realizado',l.real,'pç',f.cor,efic+'%',true)}${kpi('Refugo',l.refugo,'pç','#EF4444','',true)}${kpi('Retrab.',l.retrabalho,'pç','#F59E0B','',true)}</div>
+    ${card(`${sl('Progresso')}<div style="display:flex;align-items:center;gap:10px;margin-bottom:6px">${bar(l.real,meta,eficColor(efic),12)}<span style="color:${eficColor(efic)};font-weight:800;font-size:18px;min-width:44px">${efic}%</span></div><div style="color:var(--dim);font-size:11px">Faltam ${Math.max(meta-l.real,0)}pç · ~${Math.max(meta-l.real,0)*(prod?.ciclo||0)}min</div>`)}
+    <div class="tags">${['Produzindo','Setup','Parada'].map(s=>`<button class="tag${l.status===s?' active-'+(s==='Produzindo'?'grn':s==='Setup'?'yel':'red'):''}" onclick="setLinhaStatus('${fam}',${idx},'${s}')">${s}</button>`).join('')}</div>
+    ${card(`${sl('✦ Lançar Produção')}
+    <div style="display:flex;gap:6px;margin-bottom:10px">${['OK','Refugo','Retrabalho'].map(t=>{const tc=t==='OK'?'#22C55E':t==='Refugo'?'#EF4444':'#F59E0B';const active=tabState.lancTipo===t;return`<button style="flex:1;padding:8px 4px;border-radius:8px;border:1px solid ${active?tc:'var(--bdr)'};background:${active?tc+'22':'transparent'};color:${active?tc:'var(--dim)'};font-size:12px;font-weight:600;cursor:pointer" onclick="setTabState('lancTipo','${t}');editLinha('${fam}',${idx})">${t}</button>`;}).join('')}</div>
+    <div style="display:flex;gap:8px;margin-bottom:8px"><input type="number" id="lanc-qtd" placeholder="Qtd peças" style="flex:1" min="0"/><button style="padding:10px 18px;border-radius:8px;border:none;background:${f.cor};color:#000;font-weight:800;font-size:16px;cursor:pointer" onclick="lancarProd('${fam}',${idx})">OK</button></div>
+    <input type="text" id="lanc-obs" placeholder="Observação opcional"/>`,'acc')}
+  </div>`;
+  document.getElementById('content').innerHTML=html;
+}
+function setLinhaStatus(fam,idx,st){APP.familias[fam].linhas[idx].status=st;save();editLinha(fam,idx);}
+function ajustarMeta(fam,idx){
+  const nova=prompt('Nova meta (peças/turno):',APP.programacao[fam]?.find(p=>p.linhaId===APP.familias[fam].linhas[idx].id)?.meta||0);
+  if(nova===null)return;
+  const l=APP.familias[fam].linhas[idx];
+  const p=(APP.programacao[fam]||[]).find(x=>x.linhaId===l.id);
+  if(p)p.meta=parseInt(nova)||0;
+  save();toast('Meta atualizada!');editLinha(fam,idx);
+}
+function lancarProd(fam,idx){
+  const q=parseInt(document.getElementById('lanc-qtd')?.value||0);
+  if(!q)return;
+  const tipo=tabState.lancTipo||'OK';
+  const l=APP.familias[fam].linhas[idx];
+  if(tipo==='OK')l.real+=q;
+  else if(tipo==='Refugo')l.refugo+=q;
+  else l.retrabalho+=q;
+  save();toast('+'+q+' '+tipo+' lançado!');editLinha(fam,idx);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TAREFAS
+// ═══════════════════════════════════════════════════════════════
+function renderTarefas(){
+  const tarefas=APP.tarefas||[];
+  const filtro=tabState.tarefaFiltro||'Todos';
+  const setoresNomes=APP.setores.map(s=>s.nome);
+  const filtroTabs=['Todos',...setoresNomes].map(s=>`<button class="tag${filtro===s?' active-acc':''}" onclick="setTabState('tarefaFiltro','${s}');goTab('tarefas')">${s}</button>`).join('');
+  const lista=filtro==='Todos'?tarefas:tarefas.filter(t=>t.setor===filtro);
+  const atrasadas=lista.filter(t=>t.meta>0&&t.realizado<t.meta*.7&&t.status==='Em andamento');
+  const cards=lista.map(t=>{
+    const colab=getColab(t.colaboradorId);
+    const efic=t.meta>0?Math.round((t.realizado/t.meta)*100):0;
+    const atrasado=efic<70&&t.meta>0&&t.status==='Em andamento';
+    const passo=t.tempoPadrao>0?1:5;
+    return`<div class="card" style="margin-bottom:10px;border-color:${atrasado?'#EF444440':t.status==='Concluída'?'#22C55E40':'#38BDF840'}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;cursor:pointer" onclick="detalharTarefa('${t.id}')">
+        <div style="flex:1"><div style="color:var(--txt);font-weight:700;font-size:14px">${t.titulo}</div>
+        <div style="color:var(--acc);font-size:11px">${colab?colab.nome:'—'} · ${t.setor||t.linha}</div>
+        <div style="color:var(--dim);font-size:10px">${t.atividade||''} ${t.tempoPadrao?'· '+t.tempoPadrao+'min/pç':''} · ${t.inicio}</div></div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">${badge(t.status,t.status==='Concluída'?'#22C55E':atrasado?'#EF4444':'#38BDF8')}${atrasado?'<span style="color:#EF4444;font-size:10px;font-weight:700">⚡ PLANO</span>':''}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px"><span style="color:var(--dim);font-size:11px;min-width:50px">${t.realizado}/${t.meta}pç</span>${bar(t.realizado,t.meta,eficColor(efic),10)}<span style="color:${eficColor(efic)};font-weight:800;font-size:15px;min-width:40px">${efic}%</span></div>
+      ${t.status!=='Concluída'?`<div style="display:flex;gap:6px;justify-content:flex-end">
+        <button style="padding:4px 12px;border-radius:7px;border:1px solid var(--bdr);background:var(--surf);color:var(--txt);font-size:16px;font-weight:800;cursor:pointer" onclick="incrTarefa('${t.id}',-${passo})">−</button>
+        <button style="padding:4px 14px;border-radius:7px;border:1px solid #22C55E;background:#22C55E22;color:#22C55E;font-size:16px;font-weight:800;cursor:pointer" onclick="incrTarefa('${t.id}',${passo})">+</button>
+        <button style="padding:4px 10px;border-radius:7px;border:1px solid #38BDF840;background:#38BDF815;color:#38BDF8;font-size:12px;font-weight:600;cursor:pointer" onclick="incrTarefa('${t.id}',5)">+5</button>
+        <button style="padding:4px 10px;border-radius:7px;border:1px solid #38BDF840;background:#38BDF815;color:#38BDF8;font-size:12px;font-weight:600;cursor:pointer" onclick="incrTarefa('${t.id}',10)">+10</button>
+      </div>`:''}
+    </div>`;
+  }).join('');
+  return`<div class="col">
+    <div style="color:var(--txt);font-weight:700;font-size:18px">Tarefas</div>
+    <div class="row">${kpi('Total',tarefas.length,'','#94A3B8','',true)}${kpi('Atrasadas',atrasadas.length,'',atrasadas.length>0?'#EF4444':'#22C55E','',true)}${kpi('Concluídas',tarefas.filter(t=>t.status==='Concluída').length,'','#22C55E','',true)}</div>
+    <div class="tags" style="overflow-x:auto;flex-wrap:nowrap">${filtroTabs}</div>
+    ${atrasadas.length>0?card(`${sl('⚠ '+atrasadas.length+' Tarefa(s) com Atraso')}${atrasadas.map(t=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--bdr);cursor:pointer" onclick="detalharTarefa('${t.id}')"><span style="color:var(--red);font-size:12px;font-weight:600">${t.titulo} · ${t.setor||t.linha}</span><span style="color:var(--yel);font-weight:700">${t.meta>0?Math.round((t.realizado/t.meta)*100):0}%</span></div>`).join('')}`,'red'):''}
+    ${lista.length===0?card(`<div style="color:var(--dim);font-size:13px;text-align:center">Nenhuma tarefa${filtro!=='Todos'?' em '+filtro:''} neste turno.</div>`):''}
+    ${cards}
+    <button class="btn full" style="background:var(--acc);color:#000" onclick="novaTarefa()">+ Nova Tarefa</button>
+  </div>`;
+}
+function incrTarefa(id,delta){
+  const t=APP.tarefas.find(x=>x.id===id);if(!t)return;
+  t.realizado=Math.max(0,Math.min(t.realizado+delta,t.meta));
+  if(t.realizado>=t.meta)t.status='Concluída';
+  save();goTab('tarefas');
+}
+function detalharTarefa(id){
+  const t=APP.tarefas.find(x=>x.id===id);if(!t)return;
+  const colab=getColab(t.colaboradorId);
+  const efic=t.meta>0?Math.round((t.realizado/t.meta)*100):0;
+  const atrasado=efic<70&&t.meta>0&&t.status==='Em andamento';
+  const pls=(APP.planosAcao||[]).filter(p=>p.tarefaId===id);
+  const passo=t.tempoPadrao>0?1:5;
+  const html=`<div class="col">
+    <div style="display:flex;gap:8px;align-items:center"><button class="btn sm outline" style="color:var(--mut)" onclick="goTab('tarefas')">← Voltar</button><div style="color:var(--txt);font-weight:700;font-size:15px;flex:1">${t.titulo}</div>${badge(t.status,t.status==='Concluída'?'#22C55E':atrasado?'#EF4444':'#38BDF8')}</div>
+    ${card(`${[['Colaborador',colab?colab.nome+' · '+colab.registro:'—'],['Setor',t.setor||'—'],['Linha',t.linha||'—'],['Atividade',t.atividade||'—'],['Tempo Padrão',t.tempoPadrao?t.tempoPadrao+'min/pç':'—'],['Início',t.inicio],['Meta',t.meta+'pç']].map(([l,v])=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--bdr)"><span style="color:var(--mut);font-size:12px">${l}</span><span style="color:var(--txt);font-size:13px;font-weight:600">${v}</span></div>`).join('')}`,'acc')}
+    ${card(`${sl('Progresso da Atividade')}
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">${bar(t.realizado,t.meta,eficColor(efic),14)}<span style="color:${eficColor(efic)};font-weight:800;font-size:20px;min-width:50px">${efic}%</span></div>
+    <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:10px">
+      <button style="width:50px;height:50px;border-radius:12px;border:1px solid var(--bdr);background:var(--surf);color:var(--txt);font-size:24px;font-weight:800;cursor:pointer" onclick="incrTarefa('${id}',-${passo});detalharTarefa('${id}')">−</button>
+      <div style="text-align:center"><div style="color:${eficColor(efic)};font-size:36px;font-weight:800;line-height:1">${t.realizado}</div><div style="color:var(--dim);font-size:11px">de ${t.meta} pç</div></div>
+      <button style="width:50px;height:50px;border-radius:12px;border:1px solid #22C55E;background:#22C55E22;color:#22C55E;font-size:24px;font-weight:800;cursor:pointer" onclick="incrTarefa('${id}',${passo});detalharTarefa('${id}')">+</button>
+    </div>
+    <div style="display:flex;gap:6px;justify-content:center">
+      ${[1,5,10,25].map(n=>`<button style="padding:5px 12px;border-radius:8px;border:1px solid #38BDF840;background:#38BDF815;color:#38BDF8;font-size:12px;font-weight:600;cursor:pointer" onclick="incrTarefa('${id}',${n});detalharTarefa('${id}')">+${n}</button>`).join('')}
+      <button style="padding:5px 12px;border-radius:8px;border:1px solid #22C55E40;background:#22C55E15;color:#22C55E;font-size:12px;font-weight:600;cursor:pointer" onclick="concluirTarefa('${id}')">✓ 100%</button>
+    </div>
+    ${t.tempoPadrao>0?`<div style="color:var(--dim);font-size:10px;margin-top:8px;text-align:center">Tempo estimado restante: ~${Math.max(t.meta-t.realizado,0)*t.tempoPadrao}min</div>`:''}`)}
+    ${atrasado?card(`${sl('⚠ Atraso Detectado')}<div style="color:var(--red);font-size:13px;margin-bottom:10px">Realizado abaixo de 70% da meta. Plano de ação necessário.</div><button class="btn full" style="background:var(--red);color:#fff" onclick="criarPlanoAcao('${id}')">⚡ Criar Plano de Ação</button>`,'red'):''}
+    ${pls.length>0?card(`${sl('📋 Planos de Ação')}${pls.map((pl,i)=>`<div style="padding:8px 0;border-bottom:1px solid var(--bdr)"><div style="color:var(--org);font-weight:700;font-size:13px">Plano ${i+1} · ${pl.data} · ${pl.ferramenta}</div><div style="color:var(--txt);font-size:12px;margin-top:2px">${pl.o_que}</div><div style="color:var(--mut);font-size:11px">Resp: ${pl.quem||'—'} · Prazo: ${pl.quando||'—'}</div>${(pl.acoes||[]).filter(Boolean).map(a=>`<div style="color:var(--dim);font-size:11px">• ${a}</div>`).join('')}</div>`).join('')}`):''}
+    <div class="tags">${['Em andamento','Pausada','Concluída'].map(s=>`<button class="tag${t.status===s?' active-'+(s==='Concluída'?'grn':s==='Pausada'?'yel':'acc'):''}" onclick="setTarefaStatus('${id}','${s}')">${s}</button>`).join('')}</div>
+  </div>`;
+  document.getElementById('content').innerHTML=html;
+}
+function concluirTarefa(id){const t=APP.tarefas.find(x=>x.id===id);if(t){t.realizado=t.meta;t.status='Concluída';save();detalharTarefa(id);toast('Tarefa concluída! ✓');}}
+function setTarefaStatus(id,st){const t=APP.tarefas.find(x=>x.id===id);if(t){t.status=st;save();detalharTarefa(id);}}
+function novaTarefa(){
+  const colabs=(APP.colaboradores||[]).filter(c=>c.ativo);
+  const html=`<div class="col">
+    <div style="display:flex;gap:8px;align-items:center"><button class="btn sm outline" style="color:var(--mut)" onclick="goTab('tarefas')">← Voltar</button><div style="color:var(--txt);font-weight:700;font-size:15px">Nova Tarefa</div></div>
+    ${card(`<div class="col" style="gap:10px" id="nova-tarefa-form">
+      ${inp('Título da Tarefa','nt-titulo','text','','Ex: Produção Sofá 3L')}
+      ${sel('Colaborador Responsável','nt-colab',[{v:'',l:'Selecione...'},...colabs.map(c=>({v:c.id,l:c.nome+' · '+c.registro+' · '+c.setor}))],'')}
+      <div id="nt-setor-info" style="display:none;background:#38BDF815;border-radius:8px;padding:8px 12px;color:#38BDF8;font-size:12px"></div>
+      ${linhaInput('nt-linha','',getLinhas())}
+      ${inp('Descrição da Atividade','nt-ativ','text','','Ex: Costura estrutural')}
+      <div style="display:flex;gap:8px">
+        ${inp('Tempo Padrão (min/pç)','nt-ciclo','number','','Ex: 6')}
+        ${inp('Meta (pç)','nt-meta','number','','Ex: 80')}
+        ${inp('Início','nt-inicio','text',nowStr(),'06:00')}
+      </div>
+      <button class="btn full" style="background:var(--acc);color:#000;margin-top:4px" onclick="salvarNovaTarefa()">+ Criar Tarefa</button>
+    </div>`,'acc')}
+  </div>`;
+  document.getElementById('content').innerHTML=html;
+  document.getElementById('nt-colab').onchange=function(){
+    const c=(APP.colaboradores||[]).find(x=>x.id===this.value);
+    if(c){
+      const info=document.getElementById('nt-setor-info');
+      info.style.display='block';info.textContent='✓ Setor preenchido automaticamente: '+c.setor;
+      const linhaEl=document.getElementById('nt-linha');if(linhaEl)linhaEl.value=c.setor;
+    }
+  };
+}
+function salvarNovaTarefa(){
+  const colab=(APP.colaboradores||[]).find(c=>c.id===document.getElementById('nt-colab')?.value);
+  const t={
+    id:'TF'+uid(),
+    titulo:document.getElementById('nt-titulo')?.value||'Nova Tarefa',
+    colaboradorId:document.getElementById('nt-colab')?.value||'',
+    setor:colab?.setor||document.getElementById('nt-linha')?.value||'',
+    linha:document.getElementById('nt-linha')?.value||colab?.setor||'',
+    atividade:document.getElementById('nt-ativ')?.value||'',
+    tempoPadrao:parseFloat(document.getElementById('nt-ciclo')?.value)||0,
+    meta:parseInt(document.getElementById('nt-meta')?.value)||0,
+    inicio:document.getElementById('nt-inicio')?.value||nowStr(),
+    status:'Em andamento',realizado:0,
+  };
+  if(!t.titulo||!t.colaboradorId){toast('Preencha título e colaborador!','#EF4444');return;}
+  APP.tarefas.push(t);save();toast('Tarefa criada!');goTab('tarefas');
+}
+function criarPlanoAcao(tarefaId){
+  const t=APP.tarefas.find(x=>x.id===tarefaId);
+  const colab=getColab(t?.colaboradorId);
+  const ferramentas=['5 Porquês','Ishikawa (6M)','PDCA','5W2H','FMEA','Brainstorming'];
+  const sel_ferr=tabState.planoFerr||'5 Porquês';
+  const html=`<div class="col">
+    <div style="display:flex;gap:8px;align-items:center"><button class="btn sm outline" style="color:var(--mut)" onclick="detalharTarefa('${tarefaId}')">← Voltar</button><div style="color:var(--red);font-weight:700;font-size:15px">⚡ Plano de Ação</div></div>
+    ${card(`${sl('Desvio Identificado')}<div style="color:var(--txt);font-weight:600">${t?.titulo||''}</div><div style="color:var(--dim);font-size:11px">${t?.setor||t?.linha||''} · ${t?.realizado}/${t?.meta}pç (${t?.meta>0?Math.round((t.realizado/t.meta)*100):0}% — abaixo de 70%)</div>`,'red')}
+    ${card(`${sl('🔧 Ferramenta da Qualidade')}<div class="tags">${ferramentas.map(f=>`<button class="tag${sel_ferr===f?' active-org':''}" onclick="setTabState('planoFerr','${f}');criarPlanoAcao('${tarefaId}')">${f}</button>`).join('')}</div>`)}
+    ${card(`${sl('5W2H — Plano de Ação')}<div class="col" style="gap:10px">
+      ${inp('❓ O QUÊ — Problema','pa-oque','text','','Descreva o desvio')}
+      ${inp('❓ POR QUÊ — Causa raiz','pa-porque','text','','Ex: Setup demorado...')}
+      ${inp('📍 ONDE — Local do problema','pa-onde','text',t?.setor||t?.linha||'','Ex: Estação 3...')}
+      ${inp('📅 QUANDO — Prazo para resolução','pa-quando','text','','Ex: Até 12:00')}
+      ${inp('👤 QUEM — Responsável pela ação','pa-quem','text',colab?.nome||'','Nome do responsável')}
+      ${inp('⚙ COMO — Ação corretiva','pa-como','text','','Ex: Acionar manutenção...')}
+      ${inp('💰 QUANTO — Recurso necessário','pa-quanto','text','','Ex: 2 operadores extras...')}
+    </div>`,'org')}
+    ${card(`${sl('📋 Ações Imediatas')}<div id="acoes-container">${[0,1,2].map(i=>`<div style="margin-bottom:8px">${inp('Ação '+(i+1),'acao-'+i,'text','',i===0?'Comunicar supervisor':i===1?'Acionar manutenção':'Replanejar meta')}</div>`).join('')}</div><button style="width:100%;color:var(--acc);background:transparent;border:1px solid #38BDF840;border-radius:8px;padding:6px 14px;cursor:pointer;font-size:12px;font-weight:600" onclick="addAcao()">+ Adicionar Ação</button>`)}
+    <button class="btn full" style="background:var(--org);color:#000" onclick="salvarPlanoAcao('${tarefaId}')">💾 Salvar Plano de Ação</button>
+  </div>`;
+  document.getElementById('content').innerHTML=html;
+}
+let acaoCount=3;
+function addAcao(){
+  acaoCount++;
+  const c=document.getElementById('acoes-container');
+  if(!c)return;
+  const d=document.createElement('div');d.style.marginBottom='8px';
+  d.innerHTML=`<div class="inp-wrap"><span class="inp-lbl">Ação ${acaoCount}</span><input type="text" id="acao-${acaoCount-1}" placeholder="Descreva a ação"/></div>`;
+  c.appendChild(d);
+}
+function salvarPlanoAcao(tarefaId){
+  const acoes=[];for(let i=0;i<acaoCount;i++){const el=document.getElementById('acao-'+i);if(el&&el.value)acoes.push(el.value);}
+  const pl={id:'PA'+uid(),tarefaId,data:todayStr(),ferramenta:tabState.planoFerr||'5 Porquês',
+    o_que:document.getElementById('pa-oque')?.value||'',porque:document.getElementById('pa-porque')?.value||'',
+    onde:document.getElementById('pa-onde')?.value||'',quando:document.getElementById('pa-quando')?.value||'',
+    quem:document.getElementById('pa-quem')?.value||'',como:document.getElementById('pa-como')?.value||'',
+    quanto:document.getElementById('pa-quanto')?.value||'',acoes};
+  if(!pl.o_que){toast('Preencha o campo O QUÊ!','#EF4444');return;}
+  if(!APP.planosAcao)APP.planosAcao=[];APP.planosAcao.push(pl);save();toast('Plano de Ação salvo!');acaoCount=3;detalharTarefa(tarefaId);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// COLABORADORES
+// ═══════════════════════════════════════════════════════════════
+function renderColabs(){
+  const colabs=APP.colaboradores||[];
+  const presentes=colabs.filter(c=>c.presente).length;
+  const setoresNomes=APP.setores.map(s=>s.nome);
+  const apontRows=APP.setores.map(s=>{
+    const membros=colabs.filter(c=>c.setor===s.nome&&c.ativo);if(!membros.length)return'';
+    return`<div style="margin-bottom:14px"><div class="setor-hdr" style="color:${s.cor||'var(--acc)'}">${s.nome}</div>${membros.map(c=>`<div class="apoint-row${c.presente?' presente':''}" onclick="toggleApontamento('${c.id}')"><div class="dot" style="background:${c.presente?'#22C55E':'#3D5270'}"></div><div style="flex:1"><div style="color:var(--txt);font-size:13px;font-weight:600">${c.nome}</div><div style="color:var(--dim);font-size:10px">${c.registro} · ${c.horarioEntrada||''}–${c.horarioSaida||''}</div></div>${c.presente?`<div style="text-align:right"><div style="color:#22C55E;font-size:11px;font-weight:600">✓ Presente</div><div style="color:var(--dim);font-size:10px">${c.horaApontamento||''}</div></div>`:`<div style="color:var(--dim);font-size:11px">Ausente</div>`}</div>`).join('')}</div>`;
+  }).join('');
+  const listaRows=colabs.map(c=>`<div class="clickrow"><div class="dot" style="background:${c.presente?'#22C55E':c.ativo?'#F59E0B':'#3D5270'}"></div><div style="flex:1"><div style="color:var(--txt);font-size:13px;font-weight:700">${c.nome}</div><div style="color:var(--acc);font-size:11px">${c.registro}</div><div style="color:var(--dim);font-size:10px">${c.setor} · ${c.horarioEntrada}–${c.horarioSaida}</div></div><div style="display:flex;gap:6px"><button class="btn sm outline" style="color:var(--mut)" onclick="editColabInline('${c.id}')">✏</button></div></div>`).join('');
+  return`<div class="col">
+    <div style="color:var(--txt);font-weight:700;font-size:18px">Colaboradores &amp; Apontamento</div>
+    <div class="row">${kpi('Total',colabs.length,'','#94A3B8','',true)}${kpi('Presentes',presentes,'','#22C55E',colabs.length>0?Math.round((presentes/colabs.length)*100)+'%':'',true)}${kpi('Ausentes',colabs.length-presentes,'',colabs.length-presentes>0?'#EF4444':'#22C55E','',true)}</div>
+    ${card(`${sl('📍 Apontamento de Presença — Toque para registrar')}<div style="color:var(--dim);font-size:11px;margin-bottom:10px">Toque no colaborador para marcar manualmente, ou use a câmera para leitura automática</div><button class="btn full" style="background:linear-gradient(135deg,#38BDF8,#A78BFA);color:#000;margin-bottom:12px;font-weight:800" onclick="abrirScanner('geral')">📷 Escanear Crachá (Câmera)</button>${apontRows}`,'acc')}
+    ${card(`${sl('Quadro de Colaboradores')}${listaRows}`)}
+    <button class="btn full" style="background:var(--grn);color:#000" onclick="novoColab()">+ Cadastrar Colaborador</button>
+  </div>`;
+}
+function toggleApontamento(id){
+  const c=(APP.colaboradores||[]).find(x=>x.id===id);if(!c)return;
+  c.presente=!c.presente;c.horaApontamento=c.presente?nowStr():'';
+  save();toast(c.presente?'✓ Presença registrada — '+c.nome:'Ausência registrada — '+c.nome,c.presente?'#22C55E':'#EF4444');
+  goTab('colabs');
+}
+function novoColab(){
+  const setoresNomes=APP.setores.map(s=>s.nome);
+  const html=`<div class="col">
+    <div style="display:flex;gap:8px;align-items:center"><button class="btn sm outline" style="color:var(--mut)" onclick="goTab('colabs')">← Voltar</button><div style="color:var(--txt);font-weight:700;font-size:15px">Novo Colaborador</div></div>
+    ${card(`<div class="col" style="gap:10px">
+      ${inp('Nome Completo','nc-nome','text','','Ex: João da Silva')}
+      ${inp('Nº Registro / Matrícula','nc-reg','text','','Ex: MAT-1046')}
+      ${sel('Setor','nc-setor',[{v:'',l:'Selecione...'} ,...setoresNomes],'')}
+      <div style="display:flex;gap:8px">${inp('Hora Entrada','nc-entrada','text',APP.turno.inicio,'06:00')}${inp('Hora Saída','nc-saida','text',APP.turno.fim,'14:00')}</div>
+      <button class="btn full" style="background:var(--grn);color:#000;margin-top:4px" onclick="salvarNovoColab()">+ Cadastrar</button>
+    </div>`,'grn')}
+  </div>`;
+  document.getElementById('content').innerHTML=html;
+}
+function salvarNovoColab(){
+  const s=document.getElementById('nc-setor')?.value;
+  const setor=APP.setores.find(x=>x.nome===s);
+  const c={id:'C'+uid(),nome:document.getElementById('nc-nome')?.value||'',registro:document.getElementById('nc-reg')?.value||'',setor:s||'',horarioEntrada:document.getElementById('nc-entrada')?.value||APP.turno.inicio,horarioSaida:document.getElementById('nc-saida')?.value||APP.turno.fim,ativo:true,presente:false,horaApontamento:''};
+  if(!c.nome||!c.registro){toast('Preencha nome e registro!','#EF4444');return;}
+  if(!APP.colaboradores)APP.colaboradores=[];APP.colaboradores.push(c);save();toast('Colaborador cadastrado!');goTab('colabs');
+}
+function editColabInline(id){
+  const c=(APP.colaboradores||[]).find(x=>x.id===id);if(!c)return;
+  const setoresNomes=APP.setores.map(s=>s.nome);
+  const html=`<div class="col">
+    <div style="display:flex;gap:8px;align-items:center"><button class="btn sm outline" style="color:var(--mut)" onclick="goTab('colabs')">← Voltar</button><div style="color:var(--txt);font-weight:700;font-size:15px">Editar Colaborador</div></div>
+    ${card(`<div class="col" style="gap:10px">
+      ${inp('Nome Completo','ec-nome','text',c.nome,'')}
+      ${inp('Nº Registro','ec-reg','text',c.registro,'')}
+      ${sel('Setor','ec-setor',[{v:'',l:'Selecione...'},...setoresNomes],c.setor)}
+      <div style="display:flex;gap:8px">${inp('Hora Entrada','ec-entrada','text',c.horarioEntrada||APP.turno.inicio,'')}${inp('Hora Saída','ec-saida','text',c.horarioSaida||APP.turno.fim,'')}</div>
+      <button class="btn full" style="background:var(--grn);color:#000" onclick="salvarEditColab('${id}')">✓ Salvar</button>
+      <button class="btn full outline" style="color:var(--acc);border-color:var(--acc);margin-top:4px" onclick="abrirLabelModal('PRODAPP','${c.registro}','${c.nome.replace(/'/g,"\\'")}','${c.setor}')">🏷 Gerar Etiqueta (QR / Cód. Barras)</button>
+      <button class="btn full outline" style="color:var(--red);border-color:var(--red);margin-top:4px" onclick="if(confirm('Remover este colaborador?'))removeColab('${id}')">🗑 Remover</button>
+    </div>`)}
+  </div>`;
+  document.getElementById('content').innerHTML=html;
+}
+function salvarEditColab(id){
+  const c=(APP.colaboradores||[]).find(x=>x.id===id);if(!c)return;
+  c.nome=document.getElementById('ec-nome')?.value||c.nome;
+  c.registro=document.getElementById('ec-reg')?.value||c.registro;
+  c.setor=document.getElementById('ec-setor')?.value||c.setor;
+  c.horarioEntrada=document.getElementById('ec-entrada')?.value||c.horarioEntrada;
+  c.horarioSaida=document.getElementById('ec-saida')?.value||c.horarioSaida;
+  save();toast('Colaborador atualizado!');goTab('colabs');
+}
+function removeColab(id){APP.colaboradores=(APP.colaboradores||[]).filter(c=>c.id!==id);save();toast('Removido!');goTab('colabs');}
+
+// ═══════════════════════════════════════════════════════════════
+// SETORES
+// ═══════════════════════════════════════════════════════════════
+function renderSetores(){
+  const setores=APP.setores||[];
+  const rows=setores.map(s=>`<div class="clickrow"><div class="dot" style="background:${s.cor||'var(--acc)'}"></div><div style="flex:1"><div style="color:var(--txt);font-size:13px;font-weight:700">${s.nome}</div><div style="color:var(--dim);font-size:11px">${s.familia==='tapecaria'?'🧵 Tapeçaria':'🪚 Marcenaria'} · Resp: ${s.responsavel||'—'}</div></div><button class="btn sm outline" style="color:var(--mut)" onclick="editSetor('${s.id}')">✏</button></div>`).join('');
+  return`<div class="col">
+    <div style="color:var(--txt);font-weight:700;font-size:18px">Setores de Produção</div>
+    ${card(`${sl('Setores Cadastrados')}${rows}`)}
+    <button class="btn full" style="background:var(--acc);color:#000" onclick="novoSetor()">+ Novo Setor</button>
+  </div>`;
+}
+function novoSetor(){
+  const html=`<div class="col">
+    <div style="display:flex;gap:8px;align-items:center"><button class="btn sm outline" style="color:var(--mut)" onclick="goTab('setores')">← Voltar</button><div style="color:var(--txt);font-weight:700;font-size:15px">Novo Setor</div></div>
+    ${card(`<div class="col" style="gap:10px">
+      ${inp('Nome do Setor','ns-nome','text','','Ex: Estofados C')}
+      ${sel('Família','ns-fam',[{v:'tapecaria',l:'🧵 Tapeçaria'},{v:'marcenaria',l:'🪚 Marcenaria'}],'tapecaria')}
+      ${inp('Responsável','ns-resp','text','','Nome do líder do setor')}
+      <button class="btn full" style="background:var(--acc);color:#000;margin-top:4px" onclick="salvarNovoSetor()">+ Criar Setor</button>
+    </div>`,'acc')}
+  </div>`;
+  document.getElementById('content').innerHTML=html;
+}
+function salvarNovoSetor(){
+  const fam=document.getElementById('ns-fam')?.value||'tapecaria';
+  const s={id:'S'+uid(),nome:document.getElementById('ns-nome')?.value||'',familia:fam,responsavel:document.getElementById('ns-resp')?.value||'',cor:fam==='tapecaria'?'#A78BFA':'#38BDF8'};
+  if(!s.nome){toast('Preencha o nome do setor!','#EF4444');return;}
+  if(!APP.setores)APP.setores=[];APP.setores.push(s);
+  // also add to familias linhas
+  const nextId=Math.max(...Object.values(APP.familias).flatMap(f=>f.linhas.map(l=>l.id)),0)+1;
+  APP.familias[fam].linhas.push({id:nextId,nome:s.nome,status:'Produzindo',real:0,refugo:0,retrabalho:0});
+  save();toast('Setor criado!');goTab('setores');
+}
+function editSetor(id){
+  const s=(APP.setores||[]).find(x=>x.id===id);if(!s)return;
+  const html=`<div class="col">
+    <div style="display:flex;gap:8px;align-items:center"><button class="btn sm outline" style="color:var(--mut)" onclick="goTab('setores')">← Voltar</button><div style="color:var(--txt);font-weight:700;font-size:15px">Editar Setor</div></div>
+    ${card(`<div class="col" style="gap:10px">
+      ${inp('Nome do Setor','es-nome','text',s.nome,'')}
+      ${sel('Família','es-fam',[{v:'tapecaria',l:'🧵 Tapeçaria'},{v:'marcenaria',l:'🪚 Marcenaria'}],s.familia)}
+      ${inp('Responsável','es-resp','text',s.responsavel||'','Nome do líder')}
+      <button class="btn full" style="background:var(--grn);color:#000" onclick="salvarEditSetor('${id}')">✓ Salvar</button>
+      <button class="btn full outline" style="color:var(--acc);border-color:var(--acc);margin-top:4px" onclick="abrirLabelModal('SETOR','${s.id}','${s.nome.replace(/'/g,"\\'")}','${s.familia==='tapecaria'?'🧵 Tapeçaria':'🪚 Marcenaria'}')">🏷 Gerar Etiqueta (QR / Cód. Barras)</button>
+    </div>`)}
+  </div>`;
+  document.getElementById('content').innerHTML=html;
+}
+function salvarEditSetor(id){
+  const s=(APP.setores||[]).find(x=>x.id===id);if(!s)return;
+  const oldNome=s.nome;s.nome=document.getElementById('es-nome')?.value||s.nome;s.familia=document.getElementById('es-fam')?.value||s.familia;s.responsavel=document.getElementById('es-resp')?.value||s.responsavel;
+  // update linhas name if changed
+  Object.values(APP.familias).forEach(f=>{const l=f.linhas.find(x=>x.nome===oldNome);if(l)l.nome=s.nome;});
+  // update colaboradores setor
+  (APP.colaboradores||[]).forEach(c=>{if(c.setor===oldNome)c.setor=s.nome;});
+  save();toast('Setor atualizado!');goTab('setores');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ORDENS DE SERVIÇO — cadastro, apontamento por bipagem, tempo líquido
+// ═══════════════════════════════════════════════════════════════
+function proximoNumeroOS(){
+  const nums=(APP.ordensServico||[]).map(o=>o.numero||0);
+  return nums.length?Math.max(...nums)+1:1;
+}
+function renderOrdens(){
+  const os=APP.ordensServico||[];
+  const filtro=tabState.osFiltro||'Todos';
+  const counts={Pendente:os.filter(o=>o.status==='Pendente').length,Aberta:os.filter(o=>o.status==='Aberta').length,Concluída:os.filter(o=>o.status==='Concluída').length};
+  const lista=filtro==='Todos'?os:os.filter(o=>o.status===filtro);
+  const ordenada=[...lista].sort((a,b)=>b.numero-a.numero);
+
+  const cards=ordenada.map(o=>{
+    const colab=getColab(o.colaboradorId);
+    const stCor=o.status==='Aberta'?'#EF4444':o.status==='Pendente'?'#F59E0B':'#22C55E';
+    let tempoInfo='';
+    if(o.status==='Aberta'){
+      tempoInfo=`<div style="color:var(--yel);font-size:12px;font-weight:700;margin-top:4px">⏱ Em andamento: ${elapsed(o.abertura)}min</div>`;
+    } else if(o.status==='Concluída'){
+      const h=Math.floor(o.tempoMin/60),m=o.tempoMin%60;
+      tempoInfo=`<div style="color:var(--acc);font-size:12px;font-weight:700;margin-top:4px">⏱ Tempo líquido: ${h}h${m>0?' '+m+'min':''}</div>`;
+    }
+    return`<div class="card" style="margin-bottom:10px;border-color:${stCor}40;cursor:pointer" onclick="detalharOS('${o.id}')">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div style="flex:1">
+          <div style="color:var(--txt);font-weight:800;font-size:16px">O.S. ${String(o.numero).padStart(3,'0')}</div>
+          <div style="color:var(--acc);font-size:12px">${o.produtoNome}</div>
+          <div style="color:var(--dim);font-size:11px">${o.setor} ${colab?'· '+colab.nome+' ('+colab.registro+')':'· Aguardando colaborador'}</div>
+          ${tempoInfo}
+        </div>
+        ${badge(o.status,stCor)}
+      </div>
+    </div>`;
+  }).join('');
+
+  return`<div class="col">
+    <div style="color:var(--txt);font-weight:700;font-size:18px">Ordens de Serviço</div>
+    <div class="tags">${['Todos','Pendente','Aberta','Concluída'].map(f=>{const fc=f==='Aberta'?'#EF4444':f==='Concluída'?'#22C55E':f==='Pendente'?'#F59E0B':'#38BDF8';const cnt=f==='Todos'?os.length:counts[f];return`<button class="tag${filtro===f?' active-'+(f==='Aberta'?'red':f==='Concluída'?'grn':f==='Pendente'?'yel':'acc'):''}" onclick="setTabState('osFiltro','${f}');goTab('ordens')">${f} (${cnt})</button>`;}).join('')}</div>
+    <div class="row">${kpi('Pendentes',counts.Pendente,'','#F59E0B','',true)}${kpi('Em Andamento',counts.Aberta,'','#EF4444','',true)}${kpi('Concluídas',counts.Concluída,'','#22C55E','',true)}</div>
+    ${cards||card('<div style="color:var(--dim);font-size:12px;text-align:center">Nenhuma O.S. neste filtro.</div>')}
+    <button class="btn full" style="background:var(--acc);color:#000" onclick="novaOS()">+ Cadastrar Nova O.S.</button>
+  </div>`;
+}
+function novaOS(){
+  const setoresNomes=(APP.setores||[]).map(s=>s.nome);
+  const html=`<div class="col">
+    <div style="display:flex;gap:8px;align-items:center"><button class="btn sm outline" style="color:var(--mut)" onclick="goTab('ordens')">← Voltar</button><div style="color:var(--txt);font-weight:700;font-size:15px">Nova Ordem de Serviço</div></div>
+    ${card(`<div style="text-align:center;padding:6px 0"><div style="color:var(--dim);font-size:11px">Número sequencial</div><div style="color:var(--acc);font-weight:800;font-size:28px">O.S. ${String(proximoNumeroOS()).padStart(3,'0')}</div></div>`,'acc')}
+    ${card(`<div class="col" style="gap:10px">
+      ${sel('Família','nos-fam',[{v:'tapecaria',l:'🧵 Tapeçaria'},{v:'marcenaria',l:'🪚 Marcenaria'}],'tapecaria')}
+      ${sel('Produto','nos-prod',[{v:'',l:'Selecione a família primeiro'}],'')}
+      ${sel('Setor','nos-setor',[{v:'',l:'Selecione...'},...setoresNomes],'')}
+      ${inp('Meta (pç)','nos-meta','number','','Ex: 80')}
+      <div style="color:var(--dim);font-size:11px">O colaborador será vinculado automaticamente ao bipar a matrícula no setor correspondente.</div>
+      <button class="btn full" style="background:var(--acc);color:#000;margin-top:4px" onclick="salvarNovaOS()">+ Criar O.S.</button>
+    </div>`,'acc')}
+  </div>`;
+  document.getElementById('content').innerHTML=html;
+  const famSel=document.getElementById('nos-fam');
+  function atualizarProdutos(){
+    const fam=famSel.value;
+    const prods=APP.catalogo[fam]||[];
+    const prodSel=document.getElementById('nos-prod');
+    prodSel.innerHTML=`<option value="">Selecione...</option>`+prods.map(p=>`<option value="${p.id}">${p.id} — ${p.nome}</option>`).join('');
+  }
+  famSel.onchange=atualizarProdutos;
+  atualizarProdutos();
+}
+function salvarNovaOS(){
+  const fam=document.getElementById('nos-fam')?.value||'tapecaria';
+  const produtoId=document.getElementById('nos-prod')?.value;
+  const setor=document.getElementById('nos-setor')?.value;
+  const meta=parseInt(document.getElementById('nos-meta')?.value)||0;
+  if(!produtoId||!setor){toast('Preencha produto e setor!','#EF4444');return;}
+  const prod=getProd(fam,produtoId);
+  const numero=proximoNumeroOS();
+  const os={id:'OS'+uid(),numero,colaboradorId:'',setor,produtoId,produtoNome:prod?prod.nome:produtoId,meta,status:'Pendente',abertura:'',fechamento:'',tempoMin:0,criadaEm:nowStr()};
+  if(!APP.ordensServico)APP.ordensServico=[];
+  APP.ordensServico.push(os);
+  save();toast('O.S. '+String(numero).padStart(3,'0')+' criada!');goTab('ordens');
+}
+function detalharOS(id){
+  const os=(APP.ordensServico||[]).find(o=>o.id===id);if(!os)return;
+  const colab=getColab(os.colaboradorId);
+  const stCor=os.status==='Aberta'?'#EF4444':os.status==='Pendente'?'#F59E0B':'#22C55E';
+  let tempoBlock='';
+  if(os.status==='Aberta'){
+    tempoBlock=card(`${sl('⏱ Tempo em Andamento')}<div style="text-align:center;padding:10px 0"><div style="color:var(--yel);font-weight:800;font-size:32px">${elapsed(os.abertura)} min</div><div style="color:var(--dim);font-size:11px">desde ${os.abertura}</div></div><button class="btn full" style="background:var(--red);color:#fff" onclick="finalizarOS('${os.id}');goTab('ordens')">⏹ Finalizar O.S. Agora</button>`,'red');
+  } else if(os.status==='Concluída'){
+    const h=Math.floor(os.tempoMin/60),m=os.tempoMin%60;
+    tempoBlock=card(`${sl('⏱ Tempo Registrado')}<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div style="background:var(--surf);border-radius:8px;padding:10px"><div style="color:var(--dim);font-size:10px">Abertura</div><div style="color:var(--txt);font-weight:700">${os.abertura}</div></div><div style="background:var(--surf);border-radius:8px;padding:10px"><div style="color:var(--dim);font-size:10px">Fechamento</div><div style="color:var(--txt);font-weight:700">${os.fechamento}</div></div></div><div style="text-align:center;margin-top:10px"><div style="color:var(--acc);font-weight:800;font-size:28px">${h}h ${m}min</div><div style="color:var(--dim);font-size:10px">tempo líquido (almoço descontado se aplicável)</div></div>`,'acc');
+  } else {
+    tempoBlock=card(`<div style="color:var(--dim);font-size:12px;text-align:center">Aguardando colaborador bipar a matrícula no setor <b style="color:var(--txt)">${os.setor}</b> para iniciar.</div>`);
+  }
+  const html=`<div class="col">
+    <div style="display:flex;gap:8px;align-items:center"><button class="btn sm outline" style="color:var(--mut)" onclick="goTab('ordens')">← Voltar</button><div style="color:var(--txt);font-weight:700;font-size:15px;flex:1">O.S. ${String(os.numero).padStart(3,'0')}</div>${badge(os.status,stCor)}</div>
+    ${card(`${[['Produto',os.produtoNome],['Setor',os.setor],['Colaborador',colab?colab.nome+' · '+colab.registro:'Não vinculado'],['Meta',os.meta+'pç'],['Criada em',os.criadaEm]].map(([l,v])=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--bdr)"><span style="color:var(--mut);font-size:12px">${l}</span><span style="color:var(--txt);font-size:13px;font-weight:600">${v}</span></div>`).join('')}`)}
+    ${tempoBlock}
+    <button class="btn full outline" style="color:var(--acc);border-color:var(--acc)" onclick="abrirLabelModal('OS','${String(os.numero).padStart(3,'0')}','O.S. ${String(os.numero).padStart(3,'0')}','${os.produtoNome.replace(/'/g,"\\'")}')">🏷 Gerar Etiqueta (QR / Cód. Barras)</button>
+    <button class="btn full outline" style="color:var(--red);border-color:var(--red)" onclick="if(confirm('Excluir esta O.S.?'))excluirOS('${os.id}')">🗑 Excluir O.S.</button>
+  </div>`;
+  document.getElementById('content').innerHTML=html;
+}
+function excluirOS(id){APP.ordensServico=(APP.ordensServico||[]).filter(o=>o.id!==id);save();toast('O.S. excluída!');goTab('ordens');}
+
+
+function renderHead(){
+  const tp=APP.head.reduce((a,h)=>a+h.plan,0),pp=APP.head.reduce((a,h)=>a+h.pres,0);
+  const abs=((tp-pp)/tp*100).toFixed(1);
+  const md=turnoMin(APP.turno);
+  const rows=APP.head.map((h,i)=>`<div class="clickrow" onclick="editHead(${i})"><div style="flex:1"><div style="color:var(--txt);font-size:13px;font-weight:600">${h.setor}</div>${h.motivo?`<div style="color:var(--red);font-size:10px">${h.motivo}</div>`:''}</div><div style="display:flex;align-items:center;gap:8px;flex:1">${bar(h.pres,h.plan,h.pres===h.plan?'#22C55E':'#F59E0B',6)}<span style="color:${h.pres===h.plan?'#22C55E':'#EF4444'};font-weight:700;font-size:13px;min-width:36px;text-align:right">${h.pres}/${h.plan}</span><span style="color:var(--dim);font-size:10px">✏</span></div></div>`).join('');
+  return`<div class="col">
+    <div style="color:var(--txt);font-weight:700;font-size:18px">Head &amp; Capacidade</div>
+    <div class="row">${kpi('Planejado',tp,'ops','#94A3B8','',true)}${kpi('Presentes',pp,'ops','#22C55E','',true)}${kpi('Ausentes',tp-pp,'ops','#EF4444','',true)}</div>
+    ${card(`${sl('Absenteísmo')}<div style="display:flex;justify-content:space-between;margin-bottom:6px"><span></span><span style="color:${parseFloat(abs)>5?'#EF4444':'#F59E0B'};font-weight:800;font-size:20px">${abs}%</span></div>${bar(parseFloat(abs),15,parseFloat(abs)>5?'#EF4444':'#F59E0B',10)}<div style="color:var(--dim);font-size:10px;margin-top:5px">Meta: &lt;3% · Alerta: &gt;5%</div>`,'yel')}
+    ${card(`${sl('Por Setor — toque para editar')}${rows}`)}
+    ${card(`${sl('📐 Calculadora de Headcount — '+md+'min')}<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">${inp('Meta (pç/turno)','hc-meta','number','320','')}${inp('Takt Time (min/pç)','hc-takt','number','15','')}${inp('Eficiência (%)','hc-efic','number','85','')}${inp('Absenteísmo (%)','hc-abs','number','5','')}</div><div style="background:#38BDF812;border-radius:10px;padding:12px 14px;border:1px solid #38BDF830"><div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:var(--mut);font-size:12px">Head Teórico</span><span id="hc-result" style="color:var(--acc);font-size:26px;font-weight:800">—</span></div><div style="display:flex;justify-content:space-between"><span style="color:var(--mut);font-size:12px">Com absenteísmo</span><span id="hc-result2" style="color:var(--yel);font-size:22px;font-weight:800">—</span></div><div style="color:var(--dim);font-size:10px;margin-top:6px">Head = (Meta × Takt) ÷ (${md}min × Efic)</div></div><button class="btn full" style="background:var(--acc);color:#000;margin-top:10px" onclick="calcHead()">Calcular</button>`,'acc')}
+  </div>`;
+}
+function calcHead(){
+  const md=turnoMin(APP.turno);
+  const meta=parseInt(document.getElementById('hc-meta')?.value||0);
+  const takt=parseInt(document.getElementById('hc-takt')?.value||0);
+  const efic=parseInt(document.getElementById('hc-efic')?.value||85)/100;
+  const abs=parseInt(document.getElementById('hc-abs')?.value||0)/100;
+  const hc=Math.ceil((meta*takt)/(md*efic));
+  const ha=Math.ceil(hc/(1-abs));
+  document.getElementById('hc-result').textContent=hc+' ops';
+  document.getElementById('hc-result2').textContent=ha+' ops';
+}
+function editHead(i){
+  const h=APP.head[i];
+  const html=`<div class="col">
+    <div style="display:flex;gap:8px;align-items:center"><button class="btn sm outline" style="color:var(--mut)" onclick="goTab('head')">← Voltar</button><div style="color:var(--txt);font-weight:700;font-size:15px">${h.setor}</div></div>
+    ${card(`<div class="col" style="gap:10px">
+      ${inp('Nome do Setor','eh-setor','text',h.setor,'')}
+      <div style="display:flex;gap:8px">${inp('Planejado','eh-plan','number',h.plan,'')}${inp('Presentes','eh-pres','number',h.pres,'')}</div>
+      ${inp('Motivo ausência','eh-motivo','text',h.motivo||'','Atestado, Falta...')}
+      <button class="btn full" style="background:var(--grn);color:#000" onclick="salvarHead(${i})">✓ Salvar</button>
+    </div>`)}
+  </div>`;
+  document.getElementById('content').innerHTML=html;
+}
+function salvarHead(i){
+  APP.head[i].setor=document.getElementById('eh-setor')?.value||APP.head[i].setor;
+  APP.head[i].plan=parseInt(document.getElementById('eh-plan')?.value)||APP.head[i].plan;
+  APP.head[i].pres=Math.min(parseInt(document.getElementById('eh-pres')?.value)||0,APP.head[i].plan);
+  APP.head[i].motivo=document.getElementById('eh-motivo')?.value||'';
+  save();toast('Headcount atualizado!');goTab('head');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// QUALIDADE
+// ═══════════════════════════════════════════════════════════════
+function renderQualidade(){
+  const totalNCs=APP.ncs.reduce((a,n)=>a+n.qtd,0);
+  const totalProd=Object.values(APP.familias).flatMap(f=>f.linhas).reduce((a,l)=>a+l.real,0);
+  const ppm=totalProd>0?Math.round((totalNCs/totalProd)*1000000):0;
+  const pareto=[...APP.ncs].sort((a,b)=>b.qtd-a.qtd);const totP=pareto.reduce((a,n)=>a+n.qtd,0);
+  const paretoRows=pareto.map(nc=>{const pct=totP>0?(nc.qtd/totP)*100:0;const fc=APP.familias[nc.familia];return`<div style="margin-bottom:8px;cursor:pointer" onclick="editNC(${nc.id})"><div style="display:flex;justify-content:space-between;margin-bottom:2px"><span style="color:var(--txt);font-size:12px">${nc.item} <span style="color:var(--dim);font-size:10px">✏</span></span><span style="color:var(--red);font-weight:700;font-size:12px">${nc.qtd}pç · ${pct.toFixed(0)}%</span></div><div style="display:flex;gap:6px;align-items:center">${bar(pct,100,fc?.cor||'#EF4444',6)}<span style="color:var(--dim);font-size:10px;min-width:80px">${nc.linha}</span></div></div>`;}).join('');
+  return`<div class="col">
+    <div style="color:var(--txt);font-weight:700;font-size:18px">Qualidade &amp; NCs</div>
+    <div class="row">${kpi('Total NCs',totalNCs,'pç','#EF4444','',true)}${kpi('PPM',ppm.toLocaleString('pt-BR'),'',ppm>5000?'#EF4444':'#F59E0B','Partes/Milhão',true)}</div>
+    ${card(`${sl('📊 Pareto de NCs — Toque para editar')}${paretoRows||'<div style="color:var(--dim);font-size:12px">Nenhuma NC registrada.</div>'}`)}
+    ${card(`${sl('+ Registrar NC')}<div class="col" style="gap:10px" id="nc-form">
+      ${inp('Descrição da NC','nc-desc','text','','Ex: Costura desfiada...')}
+      <div style="display:flex;gap:8px">
+        ${sel('Família','nc-fam',[...Object.entries(APP.familias).map(([k,f])=>({v:k,l:f.icon+' '+f.nome}))],'tapecaria')}
+        <div style="flex:2">${linhaInput('nc-linha','',getLinhas())}</div>
+      </div>
+      <div style="display:flex;gap:8px">
+        ${sel('Tipo','nc-tipo',[{v:'Refugo',l:'Refugo'},{v:'Retrabalho',l:'Retrabalho'}],'Refugo')}
+        ${inp('Qtd','nc-qtd','number','','0')}
+        ${inp('Hora','nc-hora','text','',nowStr())}
+      </div>
+      <button class="btn full" style="background:var(--red);color:#fff" onclick="salvarNC()">Registrar NC</button>
+    </div>`,'red')}
+  </div>`;
+}
+function salvarNC(){
+  const nc={id:Date.now(),item:document.getElementById('nc-desc')?.value||'',linha:document.getElementById('nc-linha')?.value||'',familia:document.getElementById('nc-fam')?.value||'tapecaria',tipo:document.getElementById('nc-tipo')?.value||'Refugo',qtd:parseInt(document.getElementById('nc-qtd')?.value)||0,hora:document.getElementById('nc-hora')?.value||nowStr()};
+  if(!nc.item||!nc.qtd){toast('Preencha descrição e quantidade!','#EF4444');return;}
+  APP.ncs.push(nc);save();toast('NC registrada!','#EF4444');goTab('qualidade');
+}
+function editNC(id){
+  const nc=APP.ncs.find(n=>n.id===id);if(!nc)return;
+  const html=`<div class="col">
+    <div style="display:flex;gap:8px;align-items:center"><button class="btn sm outline" style="color:var(--mut)" onclick="goTab('qualidade')">← Voltar</button><div style="color:var(--txt);font-weight:700;font-size:15px">Editar NC</div></div>
+    ${card(`<div class="col" style="gap:10px">
+      ${inp('Nome da NC','enc-item','text',nc.item,'')}
+      ${linhaInput('enc-linha',nc.linha,getLinhas())}
+      <div style="display:flex;gap:8px">
+        ${sel('Tipo','enc-tipo',[{v:'Refugo',l:'Refugo'},{v:'Retrabalho',l:'Retrabalho'}],nc.tipo)}
+        ${inp('Qtd','enc-qtd','number',nc.qtd,'')}
+        ${inp('Hora','enc-hora','text',nc.hora||'','')}
+      </div>
+      <button class="btn full" style="background:var(--grn);color:#000" onclick="salvarEditNC(${id})">✓ Salvar</button>
+      <button class="btn full outline" style="color:var(--red);border-color:var(--red);margin-top:4px" onclick="if(confirm('Excluir esta NC?'))delNC(${id})">🗑 Excluir</button>
+    </div>`)}
+  </div>`;
+  document.getElementById('content').innerHTML=html;
+}
+function salvarEditNC(id){
+  const nc=APP.ncs.find(n=>n.id===id);if(!nc)return;
+  nc.item=document.getElementById('enc-item')?.value||nc.item;
+  nc.linha=document.getElementById('enc-linha')?.value||nc.linha;
+  nc.tipo=document.getElementById('enc-tipo')?.value||nc.tipo;
+  nc.qtd=parseInt(document.getElementById('enc-qtd')?.value)||nc.qtd;
+  nc.hora=document.getElementById('enc-hora')?.value||nc.hora;
+  save();toast('NC atualizada!');goTab('qualidade');
+}
+function delNC(id){APP.ncs=APP.ncs.filter(n=>n.id!==id);save();toast('NC excluída!','#EF4444');goTab('qualidade');}
+
+// ═══════════════════════════════════════════════════════════════
+// PARADAS
+// ═══════════════════════════════════════════════════════════════
+function renderParadas(){
+  const abertas=APP.paradas.filter(p=>p.status==='Aberta');
+  const totalMin=APP.paradas.reduce((a,p)=>a+(p.status==='Aberta'?elapsed(p.inicio):p.duracao),0);
+  const tiposParada=['Mecânica','Elétrica','Setup','Falta Material','Falta Operador','Qualidade','Acidente','Outro'];
+  const selTipo=tabState.paradaTipo||'Mecânica';
+  const abertasHtml=abertas.length>0?card(`${sl('🔴 Paradas Abertas')}${abertas.map((p,i)=>{const idx=APP.paradas.findIndex(x=>x.id===p.id);return`<div style="padding:10px 0;border-bottom:${i<abertas.length-1?'1px solid var(--bdr)':'none'}"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><div><div style="color:var(--red);font-weight:700">${p.tipo}</div><div style="color:var(--txt);font-size:12px">${p.causa||'—'}</div><div style="color:var(--dim);font-size:11px">${p.linha} · ${p.inicio}</div></div><div style="color:var(--yel);font-weight:800;font-size:20px">${elapsed(p.inicio)}min</div></div><button class="btn sm full" style="background:var(--grn);color:#000" onclick="encerrarParada(${idx})">✓ Encerrar</button></div>`;}).join('')}`,'red'):'';
+  const histHtml=APP.paradas.filter(p=>p.status==='Encerrada').map(p=>`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--bdr)"><div><div style="color:var(--txt);font-size:13px">${p.tipo}${p.causa?' — '+p.causa:''}</div><div style="color:var(--dim);font-size:11px">${p.linha} · ${p.inicio}→${p.fim||'—'}</div></div><div style="text-align:right">${badge('Encerrada','#22C55E')}<div style="color:var(--mut);font-size:11px;margin-top:2px">${p.duracao}min</div></div></div>`).join('');
+  return`<div class="col">
+    <div style="color:var(--txt);font-weight:700;font-size:18px">Gestão de Paradas</div>
+    <div class="row">${kpi('Min Parado',totalMin,'min',totalMin>60?'#EF4444':'#F59E0B','',true)}${kpi('Abertas',abertas.length,'',abertas.length>0?'#EF4444':'#22C55E','',true)}${kpi('Ocorrências',APP.paradas.length,'','#94A3B8','',true)}</div>
+    ${card(`${sl('⚡ Abrir Parada')}<div class="tags" style="margin-bottom:10px">${tiposParada.map(t=>`<button class="tag${selTipo===t?' active-red':''}" onclick="setTabState('paradaTipo','${t}');goTab('paradas')">${t}</button>`).join('')}</div><div class="col" style="gap:8px">
+      ${inp('Causa / Descrição','par-causa','text','','Ex: Correia partida...')}
+      <div style="display:flex;gap:8px"><div style="flex:2">${linhaInput('par-linha','',getLinhas())}</div>${inp('Início','par-ini','text',nowStr(),'HH:MM')}</div>
+      <button class="btn full" style="background:var(--red);color:#fff" onclick="abrirParada()">⚡ Abrir Parada</button>
+    </div>`,'red')}
+    ${abertasHtml}
+    ${histHtml?card(`${sl('Histórico')}${histHtml}`):''}
+  </div>`;
+}
+function abrirParada(){
+  const p={id:Date.now(),tipo:tabState.paradaTipo||'Mecânica',causa:document.getElementById('par-causa')?.value||'',linha:document.getElementById('par-linha')?.value||'',inicio:document.getElementById('par-ini')?.value||nowStr(),fim:'',duracao:0,status:'Aberta'};
+  if(!p.linha){toast('Informe a linha!','#EF4444');return;}
+  APP.paradas.push(p);save();toast('Parada aberta!','#EF4444');goTab('paradas');
+}
+function encerrarParada(idx){
+  const p=APP.paradas[idx];p.status='Encerrada';p.fim=nowStr();p.duracao=elapsed(p.inicio);
+  save();toast('Parada encerrada!');goTab('paradas');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TPM
+// ═══════════════════════════════════════════════════════════════
+function renderTPM(){
+  const filtro=tabState.tpmFiltro||'Todos';
+  const counts={Pendente:APP.tpm.filter(t=>t.status==='Pendente').length,Atrasada:APP.tpm.filter(t=>t.status==='Atrasada').length,Concluída:APP.tpm.filter(t=>t.status==='Concluída').length};
+  const lista=filtro==='Todos'?APP.tpm:APP.tpm.filter(t=>t.status===filtro);
+  const tpmCards=lista.map((t,i)=>{const idx=APP.tpm.findIndex(x=>x.id===t.id);return`<div class="card" style="margin-bottom:10px;border-color:${tpmColor(t.status)}40;cursor:pointer" onclick="detalharTPM(${t.id})"><div style="display:flex;justify-content:space-between;align-items:flex-start"><div style="flex:1"><div style="color:var(--txt);font-weight:700;font-size:14px">${t.equip}</div><div style="color:var(--mut);font-size:11px;margin-top:2px">${t.linha} · ${badge(t.tipo,t.tipo==='Preventiva'?'#38BDF8':t.tipo==='Corretiva'?'#FB923C':'#A78BFA')}</div>${t.responsavel?`<div style="color:var(--dim);font-size:11px">Resp: ${t.responsavel}</div>`:''}</div><div style="text-align:right;margin-left:8px">${badge(t.status,tpmColor(t.status))}<div style="color:var(--dim);font-size:10px;margin-top:4px">Próx: ${t.proxRevisao||'—'}</div></div></div>${t.obs?`<div style="color:var(--dim);font-size:11px;margin-top:8px;padding-top:6px;border-top:1px solid var(--bdr)">${t.obs.slice(0,60)}${t.obs.length>60?'...':''}</div>`:''}<div style="color:var(--acc);font-size:10px;margin-top:4px;text-align:right">Toque para detalhes →</div></div>`;}).join('');
+  return`<div class="col">
+    <div style="color:var(--txt);font-weight:700;font-size:18px">TPM — Manutenção Total</div>
+    <div class="tags">${['Todos','Pendente','Atrasada','Concluída'].map(f=>{const fc=f==='Atrasada'?'#EF4444':f==='Concluída'?'#22C55E':f==='Pendente'?'#F59E0B':'#38BDF8';const cnt=f==='Todos'?APP.tpm.length:counts[f];return`<button class="tag${filtro===f?' active-'+(f==='Atrasada'?'red':f==='Concluída'?'grn':f==='Pendente'?'yel':'acc'):''}" onclick="setTabState('tpmFiltro','${f}');goTab('tpm')">${f} (${cnt})</button>`;}).join('')}</div>
+    <div class="row">${kpi('Pendentes',counts.Pendente,'','#F59E0B','',true)}${kpi('Atrasadas',counts.Atrasada,'',counts.Atrasada>0?'#EF4444':'#22C55E','',true)}${kpi('Concluídas',counts.Concluída,'','#22C55E','',true)}</div>
+    ${tpmCards||card('<div style="color:var(--dim);font-size:12px;text-align:center">Nenhum registro neste filtro.</div>')}
+    <button class="btn full" style="background:var(--org);color:#000" onclick="novoTPM()">+ Registrar Manutenção</button>
+  </div>`;
+}
+function detalharTPM(id){
+  const t=APP.tpm.find(x=>x.id===id);if(!t)return;
+  const idx=APP.tpm.findIndex(x=>x.id===id);
+  const html=`<div class="col">
+    <div style="display:flex;gap:8px;align-items:center"><button class="btn sm outline" style="color:var(--mut)" onclick="goTab('tpm')">← Voltar</button><div style="color:var(--txt);font-weight:700;font-size:15px;flex:1">${t.equip}</div>${badge(t.status,tpmColor(t.status))}</div>
+    ${card(`${[['Linha',t.linha],['Tipo',t.tipo],['Responsável',t.responsavel||'—'],['Data Execução',t.dataExec||'—'],['Próxima Revisão',t.proxRevisao||'—']].map(([l,v])=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--bdr)"><span style="color:var(--mut);font-size:12px">${l}</span><span style="color:var(--txt);font-size:13px;font-weight:600">${v}</span></div>`).join('')}`,'acc')}
+    ${t.ferramentas?card(`${sl('🔧 Ferramentas')}<div style="color:var(--txt);font-size:13px">${t.ferramentas}</div>`):''}
+    ${t.obs?card(`${sl('📝 Observações')}<div style="color:var(--txt);font-size:13px;line-height:1.6">${t.obs}</div>`):''}
+    <button class="btn full outline" style="color:var(--acc);border-color:var(--acc)" onclick="editTPM(${t.id})">✏ Editar Registro</button>
+    <button class="btn full outline" style="color:var(--pur);border-color:var(--pur)" onclick="abrirLabelModal('EQUIP','${t.id}','${t.equip.replace(/'/g,"\\'")}','${t.linha}')">🏷 Gerar Etiqueta (QR / Cód. Barras)</button>
+    ${t.status!=='Concluída'?`<button class="btn full" style="background:var(--grn);color:#000" onclick="marcarTPMConcluida(${t.id})">✓ Marcar como Concluída</button>`:''}
+    ${t.status==='Concluída'?`<button class="btn full outline" style="color:var(--yel);border-color:var(--yel)" onclick="reabrirTPM(${t.id})">↺ Reabrir como Pendente</button>`:''}
+  </div>`;
+  document.getElementById('content').innerHTML=html;
+}
+function marcarTPMConcluida(id){const t=APP.tpm.find(x=>x.id===id);if(t){t.status='Concluída';t.dataExec=todayStr();save();toast('Manutenção concluída!');detalharTPM(id);}}
+function reabrirTPM(id){const t=APP.tpm.find(x=>x.id===id);if(t){t.status='Pendente';save();detalharTPM(id);}}
+function novoTPM(){
+  const html=`<div class="col">
+    <div style="display:flex;gap:8px;align-items:center"><button class="btn sm outline" style="color:var(--mut)" onclick="goTab('tpm')">← Voltar</button><div style="color:var(--txt);font-weight:700;font-size:15px">Registrar Manutenção</div></div>
+    ${card(`<div class="col" style="gap:10px">
+      ${inp('Equipamento','nt-equip','text','','Ex: Prensa Hidráulica...')}
+      <div style="display:flex;gap:8px"><div style="flex:2">${linhaInput('nt-tlinha','',getLinhas())}</div>${sel('Tipo','nt-ttipo',[{v:'Preventiva',l:'Preventiva'},{v:'Corretiva',l:'Corretiva'},{v:'Preditiva',l:'Preditiva'}],'Preventiva')}</div>
+      <div style="display:flex;gap:8px">${inp('Data execução','nt-dataexec','date',todayStr(),'')}${inp('Próxima revisão','nt-proxrev','date','','')}</div>
+      ${inp('Responsável','nt-resp','text','','Nome do técnico')}
+      ${inp('Ferramentas','nt-ferr','text','','Ex: Chave 17, óleo...')}
+      ${inp('Observações','nt-obs','text','','Peças trocadas, ajustes...')}
+      <button class="btn full" style="background:var(--org);color:#000;margin-top:4px" onclick="salvarNovoTPM()">Registrar</button>
+    </div>`,'org')}
+  </div>`;
+  document.getElementById('content').innerHTML=html;
+}
+function salvarNovoTPM(){
+  const dataExec=document.getElementById('nt-dataexec')?.value||'';
+  const t={id:Date.now(),equip:document.getElementById('nt-equip')?.value||'',linha:document.getElementById('nt-tlinha')?.value||'',tipo:document.getElementById('nt-ttipo')?.value||'Preventiva',dataExec,proxRevisao:document.getElementById('nt-proxrev')?.value||'',responsavel:document.getElementById('nt-resp')?.value||'',ferramentas:document.getElementById('nt-ferr')?.value||'',obs:document.getElementById('nt-obs')?.value||'',status:!dataExec||dataExec>=todayStr()?'Pendente':'Concluída'};
+  if(!t.equip||!t.linha){toast('Preencha equipamento e linha!','#EF4444');return;}
+  APP.tpm.push(t);save();toast('Manutenção registrada!');goTab('tpm');
+}
+function editTPM(id){
+  const t=APP.tpm.find(x=>x.id===id);if(!t)return;
+  const html=`<div class="col">
+    <div style="display:flex;gap:8px;align-items:center"><button class="btn sm outline" style="color:var(--mut)" onclick="detalharTPM(${id})">← Voltar</button><div style="color:var(--txt);font-weight:700;font-size:15px">Editar Registro</div></div>
+    ${card(`<div class="col" style="gap:10px">
+      ${inp('Equipamento','et-equip','text',t.equip,'')}
+      <div style="display:flex;gap:8px"><div style="flex:2">${linhaInput('et-tlinha',t.linha,getLinhas())}</div>${sel('Tipo','et-ttipo',[{v:'Preventiva',l:'Preventiva'},{v:'Corretiva',l:'Corretiva'},{v:'Preditiva',l:'Preditiva'}],t.tipo)}</div>
+      <div style="display:flex;gap:8px">${inp('Data execução','et-dataexec','date',t.dataExec||'','')}${inp('Próxima revisão','et-proxrev','date',t.proxRevisao||'','')}</div>
+      ${inp('Responsável','et-resp','text',t.responsavel||'','')}
+      ${inp('Ferramentas','et-ferr','text',t.ferramentas||'','')}
+      ${inp('Observações','et-obs','text',t.obs||'','')}
+      ${sel('Status','et-status',[{v:'Pendente',l:'Pendente'},{v:'Concluída',l:'Concluída'},{v:'Atrasada',l:'Atrasada'}],t.status)}
+      <button class="btn full" style="background:var(--grn);color:#000" onclick="salvarEditTPM(${id})">✓ Salvar</button>
+    </div>`)}
+  </div>`;
+  document.getElementById('content').innerHTML=html;
+}
+function salvarEditTPM(id){
+  const t=APP.tpm.find(x=>x.id===id);if(!t)return;
+  t.equip=document.getElementById('et-equip')?.value||t.equip;
+  t.linha=document.getElementById('et-tlinha')?.value||t.linha;
+  t.tipo=document.getElementById('et-ttipo')?.value||t.tipo;
+  t.dataExec=document.getElementById('et-dataexec')?.value||t.dataExec;
+  t.proxRevisao=document.getElementById('et-proxrev')?.value||t.proxRevisao;
+  t.responsavel=document.getElementById('et-resp')?.value||t.responsavel;
+  t.ferramentas=document.getElementById('et-ferr')?.value||t.ferramentas;
+  t.obs=document.getElementById('et-obs')?.value||t.obs;
+  t.status=document.getElementById('et-status')?.value||t.status;
+  save();toast('Manutenção atualizada!');detalharTPM(id);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// KPIs
+// ═══════════════════════════════════════════════════════════════
+function renderKPIs(){
+  const tl=Object.values(APP.familias).flatMap(f=>f.linhas);
+  const tR=tl.reduce((a,l)=>a+l.real,0),tP=Object.entries(APP.familias).flatMap(([k,f])=>f.linhas.map(l=>getProg(k,l.id)?.meta||0)).reduce((a,v)=>a+v,0);
+  const tRef=tl.reduce((a,l)=>a+l.refugo,0),tRet=tl.reduce((a,l)=>a+l.retrabalho,0);
+  const hp=APP.head.reduce((a,h)=>a+h.plan,0),hpr=APP.head.reduce((a,h)=>a+h.pres,0);
+  const tpmT=APP.paradas.reduce((a,p)=>a+(p.status==='Aberta'?elapsed(p.inicio):p.duracao),0);
+  const oeeG=oeeGeral(APP.familias);
+  const grupos=[
+    {t:'⚙ Geral',kpis:[{l:'OEE Consolidado',v:oeeG+'%',c:oeeColor(oeeG),ok:oeeG>=85,meta:'≥85%'},{l:'Atingimento Meta',v:Math.round((tR/Math.max(tP,1))*100)+'%',c:'#38BDF8',ok:tR>=tP,meta:'100%'},{l:'First Time Right',v:(((tR-tRet)/Math.max(tR,1))*100).toFixed(1)+'%',c:'#22C55E',ok:(tR-tRet)/Math.max(tR,1)>=.95,meta:'≥95%'},{l:'Taxa Refugo',v:((tRef/Math.max(tR,1))*100).toFixed(1)+'%',c:'#EF4444',ok:tRef/Math.max(tR,1)<.02,meta:'<2%'}]},
+    ...Object.entries(APP.familias).map(([k,f])=>{const v=calcOEE(f.oee.disp,f.oee.perf,f.oee.qual);const fr=f.linhas.reduce((a,l)=>a+l.real,0);const fp=f.linhas.reduce((a,l)=>a+(getProg(k,l.id)?.meta||0),0);const fref=f.linhas.reduce((a,l)=>a+l.refugo,0);return{t:f.icon+' '+f.nome,kpis:[{l:'OEE',v:v+'%',c:oeeColor(v),ok:v>=85,meta:'≥85%'},{l:'Disponibilidade',v:f.oee.disp+'%',c:f.cor,ok:f.oee.disp>=90,meta:'≥90%'},{l:'Performance',v:f.oee.perf+'%',c:'#A78BFA',ok:f.oee.perf>=95,meta:'≥95%'},{l:'Qualidade FPY',v:f.oee.qual+'%',c:'#22C55E',ok:f.oee.qual>=99,meta:'≥99%'},{l:'Meta',v:Math.round((fr/Math.max(fp,1))*100)+'%',c:'#38BDF8',ok:fr>=fp,meta:'100%'},{l:'Refugo',v:((fref/Math.max(fr,1))*100).toFixed(1)+'%',c:'#EF4444',ok:fref/Math.max(fr,1)<.02,meta:'<2%'}]};}),
+    {t:'👥 RH & Ops',kpis:[{l:'Absenteísmo',v:((hp-hpr)/hp*100).toFixed(1)+'%',c:'#F59E0B',ok:(hp-hpr)/hp<.03,meta:'<3%'},{l:'Tempo Parado',v:tpmT+'min',c:'#EF4444',ok:tpmT<60,meta:'<60min'},{l:'Ocorrências',v:APP.paradas.length+'',c:'#F59E0B',ok:APP.paradas.length<5,meta:'<5'},{l:'Manut. Atrasadas',v:APP.tpm.filter(t=>t.status==='Atrasada').length+'',c:'#FB923C',ok:APP.tpm.filter(t=>t.status==='Atrasada').length===0,meta:'0'},{l:'NCs no Turno',v:APP.ncs.reduce((a,n)=>a+n.qtd,0)+'pç',c:'#EF4444',ok:APP.ncs.reduce((a,n)=>a+n.qtd,0)<10,meta:'<10pç'}]},
+  ];
+  const todos=grupos.flatMap(g=>g.kpis);
+  const grupoCards=grupos.map(g=>`${card(`${sl(g.t)}${g.kpis.map(k=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--bdr)"><div><div style="display:flex;gap:6px">${k.ok?'✅':'⚠️'} <span style="color:var(--txt);font-size:13px;font-weight:600">${k.l}</span></div><div style="color:var(--dim);font-size:10px">Meta: ${k.meta}</div></div><div style="color:${k.c};font-size:22px;font-weight:800">${k.v}</div></div>`).join('')}`)}`).join('');
+  return`<div class="col">
+    <div style="color:var(--txt);font-weight:700;font-size:18px">KPIs Automáticos</div>
+    ${card(`<div style="display:flex;justify-content:space-around;text-align:center"><div><div style="color:#22C55E;font-size:28px;font-weight:800">${todos.filter(k=>k.ok).length}</div><div style="color:var(--mut);font-size:11px">✅ OK</div></div><div><div style="color:#EF4444;font-size:28px;font-weight:800">${todos.filter(k=>!k.ok).length}</div><div style="color:var(--mut);font-size:11px">⚠ Atenção</div></div><div><div style="color:${oeeColor(oeeG)};font-size:28px;font-weight:800">${oeeG}%</div><div style="color:var(--mut);font-size:11px">OEE</div></div></div>`)}
+    ${grupoCards}
+  </div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PROGRAMAÇÃO
+// ═══════════════════════════════════════════════════════════════
+function renderProg(){
+  const fam=tabState.progFam||'tapecaria';
+  const f=APP.familias[fam];
+  const prog=APP.programacao[fam]||[];
+  const prods=APP.catalogo[fam]||[];
+  const famTabs=Object.entries(APP.familias).map(([k,fa])=>`<button class="tag${fam===k?' active-acc':''}" onclick="setTabState('progFam','${k}');goTab('prog')">${fa.icon} ${fa.nome}</button>`).join('');
+  const rows=prog.map((p,i)=>{const prod=getProd(fam,p.produtoId);return`<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--bdr)"><div><div style="color:var(--txt);font-weight:600;font-size:13px">${p.linhaNome}</div><div style="color:${f.cor};font-size:11px">${prod?.nome||p.produtoId}</div><div style="color:var(--dim);font-size:10px">Ciclo: ${prod?.ciclo||'—'}min · Meta: ${p.meta}pç</div></div><div style="display:flex;gap:6px;align-items:center"><span style="color:var(--acc);font-weight:800;font-size:18px">${p.meta}pç</span><button class="btn sm outline" style="color:var(--mut)" onclick="editProg('${fam}',${i})">✏</button><button style="background:#EF444415;border:1px solid #EF444440;color:#EF4444;border-radius:7px;padding:5px 8px;cursor:pointer;font-size:12px" onclick="remProg('${fam}',${i})">✕</button></div></div>`;}).join('');
+  const prodOpts=[{v:'',l:'Selecione...'},...prods.map(p=>({v:p.id,l:p.id+' — '+p.nome}))];
+  return`<div class="col">
+    <div style="color:var(--txt);font-weight:700;font-size:18px">Programação Semanal</div>
+    ${card(`${sl('📅 Semana')}<div style="display:flex;gap:8px"><input id="prog-semana" type="text" value="${APP.semana}" placeholder="Ex: Semana 26/2026" style="flex:1"/><button class="btn sm" style="background:var(--acc);color:#000" onclick="salvarSemana()">Salvar</button></div><div style="color:var(--dim);font-size:10px;margin-top:6px">Vigente: <b style="color:var(--acc)">${APP.semana}</b></div>`,'acc')}
+    <div class="tags">${famTabs}</div>
+    ${card(`${sl('Linhas — '+f.nome)}${rows||'<div style="color:var(--dim);font-size:12px">Nenhuma linha programada.</div>'}`)}
+    ${card(`${sl('+ Adicionar ao Programa')}<div class="col" style="gap:8px">
+      ${linhaInput('np-linha','',getLinhas())}
+      ${sel('Produto','np-prod',prodOpts,'')}
+      ${inp('Meta pç/turno','np-meta','number','','Ex: 80')}
+      <button class="btn full" style="background:${f.cor};color:#000" onclick="addProg('${fam}')">+ Adicionar Linha</button>
+    </div>`,'acc')}
+  </div>`;
+}
+function salvarSemana(){APP.semana=document.getElementById('prog-semana')?.value||APP.semana;save();toast('Semana atualizada!');}
+function addProg(fam){
+  const linhaNome=document.getElementById('np-linha')?.value;const produtoId=document.getElementById('np-prod')?.value;const meta=parseInt(document.getElementById('np-meta')?.value||0);
+  if(!linhaNome||!produtoId||!meta){toast('Preencha todos os campos!','#EF4444');return;}
+  const lo=Object.values(APP.familias).flatMap(f=>f.linhas).find(l=>l.nome===linhaNome);
+  if(!APP.programacao[fam])APP.programacao[fam]=[];
+  APP.programacao[fam].push({linhaId:lo?.id||Date.now(),linhaNome,produtoId,meta});
+  save();toast('Linha adicionada!');goTab('prog');
+}
+function remProg(fam,i){APP.programacao[fam].splice(i,1);save();goTab('prog');}
+function editProg(fam,i){
+  const p=APP.programacao[fam][i];const prods=APP.catalogo[fam]||[];
+  const html=`<div class="col">
+    <div style="display:flex;gap:8px;align-items:center"><button class="btn sm outline" style="color:var(--mut)" onclick="goTab('prog')">← Voltar</button><div style="color:var(--txt);font-weight:700;font-size:15px">Editar Programação</div></div>
+    ${card(`<div class="col" style="gap:10px">
+      ${linhaInput('ep-linha',p.linhaNome,getLinhas())}
+      ${sel('Produto','ep-prod',[{v:'',l:'Selecione...'},...prods.map(x=>({v:x.id,l:x.id+' — '+x.nome}))],p.produtoId)}
+      ${inp('Meta pç/turno','ep-meta','number',p.meta,'')}
+      <button class="btn full" style="background:var(--grn);color:#000" onclick="salvarProgEdit('${fam}',${i})">✓ Salvar</button>
+    </div>`)}
+  </div>`;
+  document.getElementById('content').innerHTML=html;
+}
+function salvarProgEdit(fam,i){
+  APP.programacao[fam][i].linhaNome=document.getElementById('ep-linha')?.value||APP.programacao[fam][i].linhaNome;
+  APP.programacao[fam][i].produtoId=document.getElementById('ep-prod')?.value||APP.programacao[fam][i].produtoId;
+  APP.programacao[fam][i].meta=parseInt(document.getElementById('ep-meta')?.value)||APP.programacao[fam][i].meta;
+  save();toast('Programação atualizada!');goTab('prog');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CATÁLOGO
+// ═══════════════════════════════════════════════════════════════
+function renderCatalogo(){
+  const fam=tabState.catFam||'tapecaria';const f=APP.familias[fam];const prods=APP.catalogo[fam]||[];
+  const famTabs=Object.entries(APP.familias).map(([k,fa])=>`<button class="tag${fam===k?' active-acc':''}" onclick="setTabState('catFam','${k}');goTab('catalogo')">${fa.icon} ${fa.nome}</button>`).join('');
+  const rows=prods.map(p=>`<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--bdr)"><div style="flex:1"><div style="display:flex;gap:8px;align-items:center"><span style="color:${f.cor};font-size:10px;font-weight:700">${p.id}</span><span style="color:var(--txt);font-size:13px;font-weight:600">${p.nome}</span></div><div style="color:var(--dim);font-size:11px">Ciclo: ${p.ciclo}min/${p.unidade}</div></div><button class="btn sm outline" style="color:var(--mut)" onclick="editProd('${fam}','${p.id}')">✏</button><button style="background:#EF444415;border:1px solid #EF444440;color:#EF4444;border-radius:7px;padding:5px 10px;cursor:pointer;font-size:12px" onclick="if(confirm('Excluir?'))delProd('${fam}','${p.id}')">🗑</button></div>`).join('');
+  return`<div class="col">
+    <div style="color:var(--txt);font-weight:700;font-size:18px">Catálogo de Produtos</div>
+    <div class="tags">${famTabs}</div>
+    ${card(`${sl(f.icon+' Produtos — '+f.nome)}${rows||'<div style="color:var(--dim);font-size:12px">Nenhum produto.</div>'}`)}
+    ${card(`${sl('+ Novo Produto')}<div class="col" style="gap:8px">
+      <div style="display:flex;gap:8px">${inp('Código','np-id','text','','Ex: T06 (auto se vazio)')}${sel('Unidade','np-unid',[{v:'pç',l:'pç'},{v:'m',l:'m'},{v:'m²',l:'m²'},{v:'kg',l:'kg'}],'pç')}</div>
+      ${inp('Nome do Produto','np-nome','text','','Ex: Sofá 4 Lugares')}
+      ${inp('Ciclo padrão (min/un)','np-ciclo','number','','Ex: 8')}
+      <button class="btn full" style="background:${f.cor};color:#000" onclick="addProd('${fam}')">+ Cadastrar</button>
+    </div>`,'acc')}
+  </div>`;
+}
+function addProd(fam){
+  const nid=document.getElementById('np-id')?.value||(fam.slice(0,1).toUpperCase()+uid());
+  const p={id:nid,nome:document.getElementById('np-nome')?.value||'',ciclo:parseFloat(document.getElementById('np-ciclo')?.value)||0,unidade:document.getElementById('np-unid')?.value||'pç'};
+  if(!p.nome||!p.ciclo){toast('Preencha nome e ciclo!','#EF4444');return;}
+  if(!APP.catalogo[fam])APP.catalogo[fam]=[];APP.catalogo[fam].push(p);save();toast('Produto cadastrado!');goTab('catalogo');
+}
+function delProd(fam,id){APP.catalogo[fam]=(APP.catalogo[fam]||[]).filter(p=>p.id!==id);save();goTab('catalogo');}
+function editProd(fam,id){
+  const p=getProd(fam,id);if(!p)return;
+  const f=APP.familias[fam];
+  const html=`<div class="col">
+    <div style="display:flex;gap:8px;align-items:center"><button class="btn sm outline" style="color:var(--mut)" onclick="goTab('catalogo')">← Voltar</button><div style="color:var(--txt);font-weight:700;font-size:15px">Editar Produto</div></div>
+    ${card(`<div class="col" style="gap:10px">
+      <div style="display:flex;gap:8px">${inp('Código','ep-id','text',p.id,'')}${sel('Unidade','ep-unid',[{v:'pç',l:'pç'},{v:'m',l:'m'},{v:'m²',l:'m²'},{v:'kg',l:'kg'}],p.unidade)}</div>
+      ${inp('Nome','ep-nome','text',p.nome,'')}
+      ${inp('Ciclo (min/un)','ep-ciclo','number',p.ciclo,'')}
+      <button class="btn full" style="background:var(--grn);color:#000" onclick="salvarEditProd('${fam}','${id}')">✓ Salvar</button>
+      <button class="btn full outline" style="color:var(--acc);border-color:var(--acc);margin-top:4px" onclick="abrirLabelModal('PROD','${p.id}','${p.nome.replace(/'/g,"\\'")}','${p.id} · ${f.nome}')">🏷 Gerar Etiqueta (QR / Cód. Barras)</button>
+    </div>`)}
+  </div>`;
+  document.getElementById('content').innerHTML=html;
+}
+function salvarEditProd(fam,id){
+  const p=getProd(fam,id);if(!p)return;
+  p.id=document.getElementById('ep-id')?.value||p.id;
+  p.nome=document.getElementById('ep-nome')?.value||p.nome;
+  p.ciclo=parseFloat(document.getElementById('ep-ciclo')?.value)||p.ciclo;
+  p.unidade=document.getElementById('ep-unid')?.value||p.unidade;
+  save();toast('Produto atualizado!');goTab('catalogo');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RELATÓRIO
+// ═══════════════════════════════════════════════════════════════
+function renderRelatorio(){
+  const tl=Object.entries(APP.familias).flatMap(([k,f])=>f.linhas.map(l=>{const pg=getProg(k,l.id);const prod=getProd(k,pg?.produtoId);return{...l,meta:pg?.meta||0,produto:prod?.nome||'—',ficon:f.icon};}));
+  const tR=tl.reduce((a,l)=>a+l.real,0),tP=tl.reduce((a,l)=>a+l.meta,0),tRef=tl.reduce((a,l)=>a+l.refugo,0),tRet=tl.reduce((a,l)=>a+l.retrabalho,0);
+  const hp=APP.head.reduce((a,h)=>a+h.plan,0),hpr=APP.head.reduce((a,h)=>a+h.pres,0);
+  const tpmT=APP.paradas.reduce((a,p)=>a+(p.status==='Aberta'?elapsed(p.inicio):p.duracao),0);
+  const oeeG=oeeGeral(APP.familias);const dh=new Date().toLocaleDateString('pt-BR');
+  return`<div class="col">
+    <div style="color:var(--txt);font-weight:700;font-size:18px">Encerramento de Turno</div>
+    ${card(`${sl('Resumo — '+dh)}<div style="display:flex;justify-content:space-around;margin-bottom:10px"><div style="text-align:center"><div style="color:${oeeColor(oeeG)};font-weight:800;font-size:28px">${oeeG}%</div><div style="color:var(--mut);font-size:11px">OEE</div></div><div style="text-align:center"><div style="color:var(--acc);font-weight:800;font-size:28px">${Math.round((tR/Math.max(tP,1))*100)}%</div><div style="color:var(--mut);font-size:11px">Meta</div></div><div style="text-align:center"><div style="color:${tpmT>60?'#EF4444':'#F59E0B'};font-weight:800;font-size:28px">${tpmT}</div><div style="color:var(--mut);font-size:11px">Min parado</div></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${[['Planejado',tP+' pç','#94A3B8'],['Realizado',tR+' pç','#38BDF8'],['Refugo',tRef+' pç','#EF4444'],['Retrabalho',tRet+' pç','#F59E0B']].map(([l,v,c])=>`<div style="background:var(--surf);border-radius:8px;padding:8px 10px"><div style="color:var(--dim);font-size:10px">${l}</div><div style="color:${c};font-weight:700;font-size:15px">${v}</div></div>`).join('')}</div>`,'acc')}
+    ${card(`${sl('Dados do Relatório')}${inp('Engenheiro Responsável','rel-resp','text',currentUser?.perfil||'','Nome e matrícula')}${inp('Observações do turno','rel-obs','text','','Ocorrências, pendências...')}`)}
+    <button class="btn full" style="background:var(--acc);color:#000;font-size:16px;padding:16px" onclick="copiarRelatorio()">📋 Gerar &amp; Copiar Relatório</button>
+    ${card(`${sl('Preview')}<pre id="rel-preview" style="color:var(--mut);font-size:9px;white-space:pre-wrap;font-family:monospace;line-height:1.5;max-height:220px;overflow-y:auto"></pre>`)}
+  </div>`;
+}
+function gerarTextoRelatorio(){
+  const tl=Object.entries(APP.familias).flatMap(([k,f])=>f.linhas.map(l=>{const pg=getProg(k,l.id);const prod=getProd(k,pg?.produtoId);return{...l,meta:pg?.meta||0,produto:prod?.nome||'—',ficon:f.icon};}));
+  const tR=tl.reduce((a,l)=>a+l.real,0),tP=tl.reduce((a,l)=>a+l.meta,0),tRef=tl.reduce((a,l)=>a+l.refugo,0),tRet=tl.reduce((a,l)=>a+l.retrabalho,0);
+  const hp=APP.head.reduce((a,h)=>a+h.plan,0),hpr=APP.head.reduce((a,h)=>a+h.pres,0);
+  const tpmT=APP.paradas.reduce((a,p)=>a+(p.status==='Aberta'?elapsed(p.inicio):p.duracao),0);
+  const oeeG=oeeGeral(APP.familias);const dh=new Date().toLocaleDateString('pt-BR');
+  const resp=document.getElementById('rel-resp')?.value||currentUser?.perfil||'—';
+  const obs=document.getElementById('rel-obs')?.value||'—';
+  return`╔════════════════════════════════════════╗\n  ENCERRAMENTO DE TURNO\n  ${APP.semana} · ${dh} · ${APP.turno.nome} ${APP.turno.inicio}-${APP.turno.fim}\n╚════════════════════════════════════════╝\n\nRESPONSÁVEL: ${resp}\nUSUÁRIO: ${currentUser?.username||'—'}\n\n━━━ INDICADORES ━━━\n  OEE Geral:     ${oeeG}%\n  🧵 Tapeçaria:  ${calcOEE(APP.familias.tapecaria.oee.disp,APP.familias.tapecaria.oee.perf,APP.familias.tapecaria.oee.qual)}%\n  🪚 Marcenaria: ${calcOEE(APP.familias.marcenaria.oee.disp,APP.familias.marcenaria.oee.perf,APP.familias.marcenaria.oee.qual)}%\n  Planejado: ${tP}pç  Realizado: ${tR}pç (${Math.round((tR/Math.max(tP,1))*100)}%)\n  Refugo: ${tRef}pç  Retrabalho: ${tRet}pç  Parado: ${tpmT}min\n\n━━━ HEADCOUNT ━━━\n  Planejado:${hp} Presentes:${hpr} Abs:${((hp-hpr)/hp*100).toFixed(1)}%\n${APP.head.map(h=>`  • ${h.setor}: ${h.pres}/${h.plan}${h.motivo?' ('+h.motivo+')':''}`).join('\n')}\n\n━━━ POR LINHA ━━━\n${tl.map(l=>`  ${l.ficon} ${l.nome} | ${l.produto} | ${l.real}/${l.meta}pç (${l.meta>0?Math.round((l.real/l.meta)*100):0}%) | R:${l.refugo} RT:${l.retrabalho}`).join('\n')}\n\n━━━ PARADAS ━━━\n${APP.paradas.map(p=>`  • ${p.tipo}${p.causa?' — '+p.causa:''} | ${p.linha} | ${p.inicio}→${p.fim||'ABERTA'} | ${p.status==='Aberta'?elapsed(p.inicio):p.duracao}min`).join('\n')||'  Nenhuma.'}\n\n━━━ NCS ━━━\n${APP.ncs.map(n=>`  • ${n.item} | ${n.linha} | ${n.tipo} | ${n.qtd}pç | ${n.hora}`).join('\n')||'  Nenhuma.'}\n\n━━━ OBSERVAÇÕES ━━━\n${obs}\n\nProducaoApp · ${dh}`;
+}
+function copiarRelatorio(){
+  const txt=gerarTextoRelatorio();
+  const preview=document.getElementById('rel-preview');if(preview)preview.textContent=txt;
+  if(navigator.clipboard){navigator.clipboard.writeText(txt).then(()=>toast('✓ Copiado! Cole no WhatsApp ou e-mail.'));}
+  else{const ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);toast('✓ Copiado!');}
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════════════════════
+function renderConfig(){
+  const t=APP.turno;const mn=turnoMin(t);
+  return`<div class="col">
+    <div style="color:var(--txt);font-weight:700;font-size:18px">Configurações</div>
+    ${card(`${sl('⏱ Jornada de Trabalho')}<div class="col" style="gap:10px">
+      ${inp('Nome do Turno','cf-nome','text',t.nome||'','Ex: Manhã, Tarde, Noturno')}
+      <div style="display:flex;gap:8px">${inp('Início','cf-ini','text',t.inicio,'06:00')}${inp('Fim','cf-fim','text',t.fim,'14:00')}</div>
+      <div style="background:var(--surf);border-radius:8px;padding:10px 14px;display:flex;justify-content:space-between"><span style="color:var(--mut);font-size:12px">Tempo disponível</span><span id="cf-disp" style="color:var(--acc);font-weight:800;font-size:18px">${mn} min</span></div>
+      <button class="btn full" style="background:var(--acc);color:#000" onclick="salvarConfig()">Salvar Jornada</button>
+    </div>`,'acc')}
+    ${card(`${sl('🍽 Horário de Almoço (descontado automaticamente das O.S.)')}<div class="col" style="gap:10px">
+      <div style="display:flex;gap:8px">${inp('Início do almoço','cf-almini','text',t.almocoInicio||'12:00','12:00')}${inp('Fim do almoço','cf-almfim','text',t.almocoFim||'13:00','13:00')}</div>
+      <div style="color:var(--dim);font-size:11px">Se uma Ordem de Serviço ficar aberta durante esse intervalo, o tempo do almoço é descontado automaticamente do tempo líquido calculado.</div>
+      <button class="btn full" style="background:var(--org);color:#000" onclick="salvarConfig()">Salvar Almoço</button>
+    </div>`,'org')}
+    ${card(`${sl('👤 Usuário Logado')}<div style="color:var(--txt);font-size:13px;font-weight:600">${currentUser?.username}</div><div style="color:var(--acc);font-size:12px">${currentUser?.perfil}</div><div style="color:var(--dim);font-size:11px">Perfil: ${currentUser?.role}</div>`)}
+    ${card(`${sl('💾 Dados')}<div style="display:flex;gap:8px"><button class="btn sm" style="background:var(--red);color:#fff" onclick="if(confirm('Resetar todos os dados para o padrão? Esta ação não pode ser desfeita.'))resetApp()">🔄 Resetar Dados</button></div><div style="color:var(--dim);font-size:10px;margin-top:8px">Os dados são salvos automaticamente no seu dispositivo.</div>`)}
+    <div style="color:var(--dim);font-size:10px;text-align:center;padding:10px 0">
+      📱 Para instalar como app:<br/>
+      <b>iOS:</b> Safari → Compartilhar → Adicionar à Tela de Início<br/>
+      <b>Android:</b> Chrome → Menu (⋮) → Adicionar à tela inicial<br/>
+      <b>PC:</b> Chrome → ícone de instalação na barra de endereço
+    </div>
+  </div>`;
+}
+function salvarConfig(){
+  APP.turno.nome=document.getElementById('cf-nome')?.value||APP.turno.nome;
+  APP.turno.inicio=document.getElementById('cf-ini')?.value||APP.turno.inicio;
+  APP.turno.fim=document.getElementById('cf-fim')?.value||APP.turno.fim;
+  APP.turno.almocoInicio=document.getElementById('cf-almini')?.value||APP.turno.almocoInicio;
+  APP.turno.almocoFim=document.getElementById('cf-almfim')?.value||APP.turno.almocoFim;
+  const mn=turnoMin(APP.turno);
+  const d=document.getElementById('cf-disp');if(d)d.textContent=mn+' min';
+  save();toast('Configurações salvas!');
+  document.getElementById('topbar-sub').textContent=`Turno ${APP.turno.nome} · ${APP.turno.inicio}–${APP.turno.fim} · ${APP.semana}`;
+}
+function resetApp(){APP=JSON.parse(JSON.stringify(APP_DEFAULT));save();toast('Dados resetados!');goTab('dash');}
+
+// ═══════════════════════════════════════════════════════════════
+// TAB ROUTER
+// ═══════════════════════════════════════════════════════════════
+function setTabState(key,val){tabState[key]=val;}
+function renderTab(key){
+  const renders={dash:renderDash,ordens:renderOrdens,oee:renderOEE,linhas:renderLinhas,tarefas:renderTarefas,colabs:renderColabs,head:renderHead,qualidade:renderQualidade,paradas:renderParadas,tpm:renderTPM,kpis:renderKPIs,prog:renderProg,catalogo:renderCatalogo,setores:renderSetores,relatorio:renderRelatorio,config:renderConfig};
+  const fn=renders[key];
+  if(fn){document.getElementById('content').innerHTML=fn();}
+  // Init relatorio preview
+  if(key==='relatorio'){setTimeout(()=>{const p=document.getElementById('rel-preview');if(p)p.textContent=gerarTextoRelatorio();},100);}
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SCANNER — Código de Barras + QR Code (câmera)
+// ═══════════════════════════════════════════════════════════════
+let zxingReader=null;
+let scannerStream=null;
+let scannerMode='geral'; // 'geral' = apontamento por qualquer colaborador
+
+function abrirScanner(modo){
+  scannerMode=modo||'geral';
+  const modal=document.getElementById('scanner-modal');
+  modal.classList.add('show');
+  document.getElementById('scanner-status').textContent='Iniciando câmera...';
+  document.getElementById('scanner-result').classList.remove('show');
+
+  if(typeof ZXing==='undefined'){
+    document.getElementById('scanner-status').textContent='⚠ Biblioteca de leitura não carregou. Verifique sua conexão com a internet.';
+    return;
+  }
+
+  const codeReader=new ZXing.BrowserMultiFormatReader();
+  zxingReader=codeReader;
+  const videoEl=document.getElementById('scanner-video');
+
+  codeReader.listVideoInputDevices().then(devices=>{
+    if(!devices.length){
+      document.getElementById('scanner-status').textContent='⚠ Nenhuma câmera encontrada neste dispositivo.';
+      return;
+    }
+    // prefer back camera
+    const backCam=devices.find(d=>/back|rear|environment/i.test(d.label))||devices[devices.length-1];
+    codeReader.decodeFromVideoDevice(backCam.deviceId,videoEl,(result,err)=>{
+      if(result){
+        onScanResult(result.getText());
+      }
+    }).then(controls=>{
+      scannerStream=controls;
+      document.getElementById('scanner-status').textContent='Aponte a câmera para o código de barras ou QR Code';
+    }).catch(e=>{
+      document.getElementById('scanner-status').textContent='⚠ Não foi possível acessar a câmera: '+e.message;
+    });
+  }).catch(e=>{
+    document.getElementById('scanner-status').textContent='⚠ Erro ao listar câmeras: '+e.message;
+  });
+}
+
+function fecharScanner(){
+  const modal=document.getElementById('scanner-modal');
+  modal.classList.remove('show');
+  if(zxingReader){try{zxingReader.reset();}catch(e){}}
+  const videoEl=document.getElementById('scanner-video');
+  if(videoEl&&videoEl.srcObject){
+    videoEl.srcObject.getTracks().forEach(t=>t.stop());
+    videoEl.srcObject=null;
+  }
+  zxingReader=null;scannerStream=null;
+}
+
+// Formato esperado no crachá: PRODAPP|MAT-1041|Carlos Silva
+// Aceita também apenas a matrícula pura (ex: MAT-1041) para códigos de barras tradicionais
+function onScanResult(text){
+  if(!text)return;
+  if(navigator.vibrate)navigator.vibrate(100);
+
+  // Etiquetas geradas pelo próprio app usam prefixo|codigo|nome
+  if(text.includes('|')){
+    const parts=text.split('|');
+    const prefixo=parts[0], codigo=parts[1], nomeEtq=parts[2]||'';
+
+    if(prefixo==='PRODAPP'){
+      // Colaborador — fluxo de O.S.
+      const colab=(APP.colaboradores||[]).find(c=>c.registro.toLowerCase()===codigo.toLowerCase());
+      if(!colab){ mostrarResultadoScanner('erro','Matrícula não encontrada: <b>'+codigo+'</b>'); return; }
+      const osAbertas=(APP.ordensServico||[]).filter(o=>o.colaboradorId===colab.id&&o.status==='Aberta');
+      const osPendentesSetor=(APP.ordensServico||[]).filter(o=>o.status==='Pendente'&&(!o.colaboradorId||o.colaboradorId===colab.id)&&o.setor===colab.setor);
+      mostrarResultadoScanner('colab', colab, osAbertas, osPendentesSetor);
+      return;
+    }
+    if(prefixo==='OS'){
+      const os=(APP.ordensServico||[]).find(o=>String(o.numero).padStart(3,'0')===codigo);
+      if(!os){ mostrarResultadoScanner('erro','O.S. não encontrada: <b>'+codigo+'</b>'); return; }
+      mostrarResultadoInfo('📄','O.S. '+codigo, os.produtoNome, os.setor, badge(os.status, os.status==='Aberta'?'#EF4444':os.status==='Pendente'?'#F59E0B':'#22C55E'), ()=>{fecharScanner();goTab('ordens');});
+      return;
+    }
+    if(prefixo==='PROD'){
+      let prod=null, famAchada=null;
+      for(const fam of Object.keys(APP.catalogo)){ const p=getProd(fam,codigo); if(p){prod=p;famAchada=fam;break;} }
+      if(!prod){ mostrarResultadoScanner('erro','Produto não encontrado: <b>'+codigo+'</b>'); return; }
+      mostrarResultadoInfo('📦',prod.nome, 'Código: '+prod.id, 'Ciclo: '+prod.ciclo+'min/'+prod.unidade, '', ()=>{fecharScanner();goTab('catalogo');});
+      return;
+    }
+    if(prefixo==='SETOR'){
+      const s=(APP.setores||[]).find(x=>x.id===codigo);
+      if(!s){ mostrarResultadoScanner('erro','Setor não encontrado: <b>'+codigo+'</b>'); return; }
+      mostrarResultadoInfo('🏭',s.nome, s.familia==='tapecaria'?'🧵 Tapeçaria':'🪚 Marcenaria', 'Responsável: '+(s.responsavel||'—'), '', ()=>{fecharScanner();goTab('setores');});
+      return;
+    }
+    if(prefixo==='EQUIP'){
+      const t=(APP.tpm||[]).find(x=>String(x.id)===codigo);
+      if(!t){ mostrarResultadoScanner('erro','Equipamento não encontrado.'); return; }
+      mostrarResultadoInfo('🔧',t.equip, t.linha, 'Status: '+t.status, badge(t.status, tpmColor(t.status)), ()=>{fecharScanner();goTab('tpm');});
+      return;
+    }
+  }
+
+  // Código de barras tradicional (sem prefixo) — trata como matrícula de colaborador
+  const matricula=text.trim();
+  const colab=(APP.colaboradores||[]).find(c=>c.registro.toLowerCase()===matricula.toLowerCase());
+  if(!colab){
+    mostrarResultadoScanner('erro','Código não reconhecido: <b>'+text+'</b><br/>Nenhum colaborador com essa matrícula.');
+    return;
+  }
+  const osAbertas=(APP.ordensServico||[]).filter(o=>o.colaboradorId===colab.id&&o.status==='Aberta');
+  const osPendentesSetor=(APP.ordensServico||[]).filter(o=>o.status==='Pendente'&&(!o.colaboradorId||o.colaboradorId===colab.id)&&o.setor===colab.setor);
+  mostrarResultadoScanner('colab', colab, osAbertas, osPendentesSetor);
+}
+
+function mostrarResultadoInfo(icon,titulo,linha1,linha2,extraBadge,onConcluir){
+  const r=document.getElementById('scanner-result');
+  r.classList.add('show');
+  r.innerHTML=`
+    <div style="text-align:center">
+      <div style="font-size:40px;margin-bottom:8px">${icon}</div>
+      <div style="color:var(--txt);font-weight:800;font-size:18px">${titulo}</div>
+      <div style="color:var(--acc);font-size:13px;margin-top:4px">${linha1}</div>
+      <div style="color:var(--dim);font-size:12px">${linha2}</div>
+      ${extraBadge?`<div style="margin-top:8px">${extraBadge}</div>`:''}
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button class="btn full outline" style="color:var(--mut)" onclick="continuarEscaneando()">📷 Escanear Outro</button>
+        <button class="btn full" style="background:var(--acc);color:#000" id="scan-info-concluir">✓ Ver Detalhes</button>
+      </div>
+    </div>`;
+  document.getElementById('scan-info-concluir').onclick=onConcluir;
+}
+
+function iniciarOS(osId, colabId){
+  const os=(APP.ordensServico||[]).find(o=>o.id===osId);
+  const colab=getColab(colabId);
+  if(!os||!colab)return;
+  os.colaboradorId=colabId;
+  os.status='Aberta';
+  os.abertura=nowStr();
+  os.fechamento='';
+  os.tempoMin=0;
+  save();
+  if(navigator.vibrate)navigator.vibrate([80,50,80]);
+  mostrarResultadoFinal('▶️','O.S. Iniciada!',`O.S. ${String(os.numero).padStart(3,'0')}`,`${colab.nome} · ${os.produtoNome}`,'#22C55E',`Início: ${os.abertura}`);
+}
+
+function finalizarOS(osId){
+  const os=(APP.ordensServico||[]).find(o=>o.id===osId);
+  if(!os)return;
+  const colab=getColab(os.colaboradorId);
+  os.fechamento=nowStr();
+  os.status='Concluída';
+  os.tempoMin=calcularTempoLiquidoOS(os);
+  save();
+  if(navigator.vibrate)navigator.vibrate([80,50,80,50,80]);
+  const h=Math.floor(os.tempoMin/60), m=os.tempoMin%60;
+  mostrarResultadoFinal('✅','O.S. Finalizada!',`O.S. ${String(os.numero).padStart(3,'0')}`,`${colab?colab.nome:''} · ${os.produtoNome}`,'#38BDF8',`Tempo total: ${h}h${m>0?' '+m+'min':''} (descontado almoço, se houver)`);
+}
+
+// Calcula tempo líquido em minutos entre abertura e fechamento, descontando o horário de almoço se a OS atravessar esse intervalo
+function calcularTempoLiquidoOS(os){
+  if(!os.abertura||!os.fechamento)return 0;
+  const toMin=s=>{const[h,m]=s.split(':').map(Number);return h*60+m;};
+  let ini=toMin(os.abertura), fim=toMin(os.fechamento);
+  if(fim<ini)fim+=24*60; // segurança para virada de turno
+  let total=fim-ini;
+  const t=APP.turno;
+  if(t.almocoInicio&&t.almocoFim){
+    const almIni=toMin(t.almocoInicio), almFim=toMin(t.almocoFim);
+    const overlapIni=Math.max(ini,almIni), overlapFim=Math.min(fim,almFim);
+    if(overlapFim>overlapIni)total-=(overlapFim-overlapIni);
+  }
+  return Math.max(0,total);
+}
+
+function mostrarResultadoScanner(tipo, colabOrMsg, osAbertas, osPendentes){
+  const r=document.getElementById('scanner-result');
+  r.classList.add('show');
+
+  if(tipo==='erro'){
+    r.innerHTML=`
+      <div style="text-align:center">
+        <div style="font-size:40px;margin-bottom:8px">⚠️</div>
+        <div style="color:var(--red);font-weight:700;font-size:15px">${colabOrMsg}</div>
+        <button class="btn full" style="background:var(--acc);color:#000;margin-top:14px" onclick="continuarEscaneando()">📷 Tentar Novamente</button>
+      </div>`;
+    return;
+  }
+
+  const colab=colabOrMsg;
+  let html=`<div style="max-height:60vh;overflow-y:auto">
+    <div style="text-align:center;margin-bottom:14px">
+      <div style="font-size:36px;margin-bottom:4px">🪪</div>
+      <div style="color:var(--acc);font-weight:800;font-size:17px">${colab.nome}</div>
+      <div style="color:var(--dim);font-size:12px">${colab.registro} · ${colab.setor}</div>
+    </div>`;
+
+  if(osAbertas.length>0){
+    html+=`<div style="color:var(--mut);font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">🔴 O.S. em andamento — toque para finalizar</div>`;
+    osAbertas.forEach(os=>{
+      html+=`<div onclick="finalizarOS('${os.id}')" style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.4);border-radius:10px;padding:12px;margin-bottom:8px;cursor:pointer">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div><div style="color:var(--txt);font-weight:700;font-size:14px">O.S. ${String(os.numero).padStart(3,'0')}</div><div style="color:var(--dim);font-size:11px">${os.produtoNome}</div><div style="color:var(--yel);font-size:11px;margin-top:2px">Aberta desde ${os.abertura} (${elapsed(os.abertura)}min)</div></div>
+          <div style="color:var(--red);font-weight:800;font-size:20px">⏹</div>
+        </div>
+      </div>`;
+    });
+  }
+
+  if(osPendentes.length>0){
+    html+=`<div style="color:var(--mut);font-size:11px;text-transform:uppercase;letter-spacing:1px;margin:14px 0 8px">🟡 O.S. aguardando início — toque para iniciar</div>`;
+    osPendentes.forEach(os=>{
+      html+=`<div onclick="iniciarOS('${os.id}','${colab.id}')" style="background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.4);border-radius:10px;padding:12px;margin-bottom:8px;cursor:pointer">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div><div style="color:var(--txt);font-weight:700;font-size:14px">O.S. ${String(os.numero).padStart(3,'0')}</div><div style="color:var(--dim);font-size:11px">${os.produtoNome} · Meta: ${os.meta}pç</div></div>
+          <div style="color:var(--grn);font-weight:800;font-size:20px">▶</div>
+        </div>
+      </div>`;
+    });
+  }
+
+  if(osAbertas.length===0&&osPendentes.length===0){
+    html+=`<div style="color:var(--dim);font-size:12px;text-align:center;padding:14px 0">Nenhuma O.S. pendente ou em andamento para este colaborador/setor.<br/>Cadastre uma O.S. na aba "Ordens de Serviço".</div>`;
+  }
+
+  html+=`<button class="btn full outline" style="color:var(--mut);margin-top:10px" onclick="continuarEscaneando()">📷 Escanear Outro</button>
+    <button class="btn full" style="background:var(--acc);color:#000;margin-top:8px" onclick="fecharScanner();goTab('ordens')">✓ Concluir</button>
+  </div>`;
+
+  r.innerHTML=html;
+}
+
+function mostrarResultadoFinal(icon,titulo,osLabel,detalhe,cor,extra){
+  const r=document.getElementById('scanner-result');
+  r.classList.add('show');
+  r.innerHTML=`
+    <div style="text-align:center">
+      <div style="font-size:40px;margin-bottom:8px">${icon}</div>
+      <div style="color:var(--txt);font-weight:800;font-size:18px">${titulo}</div>
+      <div style="color:${cor};font-weight:700;font-size:16px;margin-top:6px">${osLabel}</div>
+      <div style="color:var(--dim);font-size:12px">${detalhe}</div>
+      <div style="color:${cor};font-size:13px;margin-top:6px;font-weight:600">${extra}</div>
+      <div style="display:flex;gap:8px;margin-top:16px">
+        <button class="btn full outline" style="color:var(--mut)" onclick="continuarEscaneando()">📷 Escanear Outro</button>
+        <button class="btn full" style="background:var(--acc);color:#000" onclick="fecharScanner();goTab('ordens')">✓ Concluir</button>
+      </div>
+    </div>`;
+}
+
+function continuarEscaneando(){
+  document.getElementById('scanner-result').classList.remove('show');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// GERADOR DE ETIQUETAS — QR Code e Código de Barras (via CDN)
+// ═══════════════════════════════════════════════════════════════
+let labelAtual={payload:'',titulo:'',subtitulo:''};
+let labelTipoAtivo='qr';
+
+// payload padrão: PREFIXO|codigo|nome-ou-descricao
+function abrirLabelModal(prefixo, codigo, titulo, subtitulo){
+  labelAtual={payload:prefixo+'|'+codigo+'|'+titulo, titulo, subtitulo, codigo};
+  labelTipoAtivo='qr';
+  document.getElementById('label-tab-qr').className='tag active-acc';
+  document.getElementById('label-tab-barcode').className='tag';
+  document.getElementById('label-modal').style.display='flex';
+  renderizarEtiqueta();
+}
+function fecharLabelModal(){
+  document.getElementById('label-modal').style.display='none';
+}
+function trocarTipoEtiqueta(tipo){
+  labelTipoAtivo=tipo;
+  document.getElementById('label-tab-qr').className='tag'+(tipo==='qr'?' active-acc':'');
+  document.getElementById('label-tab-barcode').className='tag'+(tipo==='barcode'?' active-acc':'');
+  renderizarEtiqueta();
+}
+function renderizarEtiqueta(){
+  const content=document.getElementById('label-content');
+  const info=document.getElementById('label-info');
+  info.innerHTML=`<div style="color:var(--txt);font-weight:800;font-size:15px">${labelAtual.titulo}</div><div style="color:var(--acc);font-size:12px">${labelAtual.subtitulo||''}</div><div style="color:var(--dim);font-size:10px;margin-top:2px">${labelAtual.codigo||''}</div>`;
+
+  if(labelTipoAtivo==='qr'){
+    if(typeof QRCode==='undefined'){
+      content.innerHTML='<div style="color:#c00;font-size:12px;padding:20px">⚠ Biblioteca de QR não carregou.<br/>Verifique sua conexão com a internet.</div>';
+      return;
+    }
+    content.innerHTML='<canvas id="label-canvas"></canvas>';
+    QRCode.toCanvas(document.getElementById('label-canvas'), labelAtual.payload, {width:200,margin:1,color:{dark:'#000000',light:'#ffffff'}}, function(err){
+      if(err){ content.innerHTML='<div style="color:#c00;font-size:12px;padding:20px">⚠ Erro ao gerar QR Code.</div>'; }
+    });
+  } else {
+    if(typeof JsBarcode==='undefined'){
+      content.innerHTML='<div style="color:#c00;font-size:12px;padding:20px">⚠ Biblioteca de código de barras não carregou.<br/>Verifique sua conexão com a internet.</div>';
+      return;
+    }
+    content.innerHTML='<svg id="label-svg"></svg>';
+    try{
+      // Código de barras usa apenas o código curto (matrícula/número), não o payload completo
+      JsBarcode('#label-svg', labelAtual.codigo || labelAtual.payload, {format:'CODE128', width:2, height:70, displayValue:true, fontSize:14, margin:8});
+    }catch(err){
+      content.innerHTML='<div style="color:#c00;font-size:12px;padding:20px">⚠ Não foi possível gerar código de barras para este valor.</div>';
+    }
+  }
+}
+
+
+function initApp(){
+  renderNav();
+  renderTab('dash');
+  const fab=document.getElementById('fab-scan');if(fab)fab.style.display='flex';
+  document.getElementById('topbar-sub').textContent=`Turno ${APP.turno.nome} · ${APP.turno.inicio}–${APP.turno.fim} · ${APP.semana}`;
+  // clock
+  setInterval(()=>{
+    const n=nowStr();
+    document.getElementById('topbar-sub').textContent=`Turno ${APP.turno.nome} · ${APP.turno.inicio}–${APP.turno.fim} · ${n} · ${APP.semana}`;
+  },30000);
+}
+
+// PWA Service Worker
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('data:application/javascript,self.addEventListener("fetch",e=>e.respondWith(fetch(e.request)))').catch(()=>{});
+}
+</script>
+</body>
+</html>
