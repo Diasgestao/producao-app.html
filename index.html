@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema MES de Produção Completo</title>
+    <!-- Biblioteca para geração do Código de Barras real (CODE128) -->
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
     <style>
         :root {
             --bg-dark: #0f172a;
@@ -150,17 +152,6 @@
             margin-bottom: 20px;
         }
 
-        .barcode-placeholder {
-            font-family: 'Courier New', Courier, monospace;
-            font-weight: bold;
-            font-size: 22px;
-            letter-spacing: 4px;
-            border: 2px dashed #000;
-            padding: 10px;
-            text-align: center;
-            margin-top: 20px;
-        }
-
         /* Regras de Impressão Nativa (Celular e PC) */
         @media print {
             body * { visibility: hidden; }
@@ -235,7 +226,7 @@
         <button class="btn" onclick="saveProgramacao()">Salvar Programação Semanal</button>
     </div>
 
-    <!-- 3. ORDEM DE PRODUÇÃO (IMPRESSÃO INTEGRADA) -->
+    <!-- 3. ORDEM DE PRODUÇÃO (IMPRESSÃO COM CÓDIGO DE BARRAS) -->
     <div id="op" class="tab-content">
         <div class="no-print" style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
             <label>Selecionar OP para visualizar: 
@@ -278,29 +269,38 @@
                     <li>Inspeção de qualidade e liberação para embalagem/envio.</li>
                 </ol>
 
-                <div class="barcode-placeholder">
-                    ||| | ||||| ||| |||| || ||||||| |||
-                    <div style="font-size: 12px; margin-top: 5px;" id="op-card-barcode">*OP-0000*</div>
+                <!-- Código de Barras Gerado Dinamicamente -->
+                <div style="text-align: center; margin-top: 25px;">
+                    <svg id="op-barcode-canvas"></svg>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- 4. APONTAMENTO DE ATIVIDADES (BIP / CÓDIGO DE BARRAS) -->
+    <!-- 4. APONTAMENTO DE ATIVIDADES (BIP / LEITOR DE CÓDIGO DE BARRAS COM SETOR) -->
     <div id="atividades" class="tab-content">
         <h3>Registro de Apontamento por Código de Barras</h3>
-        <p style="color: var(--text-muted);">Bipe o código de barras da OP para iniciar e bipe novamente para finalizar o tempo da operação.</p>
+        <p style="color: var(--text-muted);">Selecione o setor da operação e bipe o código de barras da OP para registrar o tempo em cada etapa da fábrica.</p>
         
-        <div style="background: var(--bg-dark); padding: 15px; border-radius: 6px; margin-bottom: 20px;">
-            <label for="barcode-input"><strong>Leitor de Código de Barras (Bip):</strong></label><br><br>
-            <input type="text" id="barcode-input" placeholder="Aguardando bip da OP (ex: OP-1002)..." autofocus style="width: 100%; font-size: 16px; padding: 12px;" onkeypress="processarBip(event)">
+        <div style="background: var(--bg-dark); padding: 15px; border-radius: 6px; margin-bottom: 20px; display: flex; gap: 15px; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 200px;">
+                <label for="apontamento-setor-select"><strong>Setor da Operação:</strong></label><br><br>
+                <select id="apontamento-setor-select" style="width: 100%; font-size: 15px; padding: 10px;">
+                    <!-- Preenchido dinamicamente com os setores ativos -->
+                </select>
+            </div>
+            <div style="flex: 2; min-width: 250px;">
+                <label for="barcode-input"><strong>Leitor de Código de Barras (Bip):</strong></label><br><br>
+                <input type="text" id="barcode-input" placeholder="Aguardando bip da OP (ex: OP-1002)..." autofocus style="width: 100%; font-size: 15px; padding: 10px;" onkeypress="processarBip(event)">
+            </div>
         </div>
 
-        <h4>Histórico de Apontamentos do Chão de Fábrica</h4>
+        <h4>Histórico de Apontamentos por Setor</h4>
         <table>
             <thead>
                 <tr>
                     <th>Nº OP</th>
+                    <th>Setor</th>
                     <th>Operador</th>
                     <th>Início</th>
                     <th>Fim</th>
@@ -336,34 +336,6 @@
     ];
 
     // Array Global de Apontamentos
-    // ... CÓDIGO ANTERIOR QUE JÁ EXISTE NO SEU ARQUIVO ...
-    }
-
-    // ==========================================
-    // AQUI VOCÊ SÓ ACRESCENTA (COLE ABAIXO):
-    // ==========================================
-    let apontamentos = JSON.parse(localStorage.getItem('mes_apontamentos')) || [];
-
-    function processarBip(event) {
-        // ... (código da função processarBip)
-    }
-
-    function renderApontamentos() {
-        // ... (código da função renderApontamentos)
-    }
-
-    function limparApontamentos() {
-        // ... (código da função limparApontamentos)
-    }
-    // ==========================================
-
-    // CÓDIGO QUE JÁ EXISTIA (Apenas acrescente a última linha):
-    renderSetores();
-    renderProgramacao();
-    renderApontamentos(); // <-- Acrescente apenas esta linha no final
-</script>
-</body>
-</html>
     let apontamentos = JSON.parse(localStorage.getItem('mes_apontamentos')) || [];
 
     // Renderizar Tabela de Setores Produtivos
@@ -387,6 +359,18 @@
                 </tr>
             `;
         });
+        updateApontamentoSetoresSelect(data);
+    }
+
+    // Atualiza a lista suspensa de setores na aba de Apontamentos
+    function updateApontamentoSetoresSelect(setoresData) {
+        const select = document.getElementById('apontamento-setor-select');
+        if (!select) return;
+        select.innerHTML = '';
+        const setoresAtivos = setoresData.filter(s => s.status === 'Ativo');
+        setoresAtivos.forEach(setor => {
+            select.innerHTML += `<option value="${setor.nome}">${setor.id} - ${setor.nome}</option>`;
+        });
     }
 
     // Adicionar Novo Setor
@@ -408,6 +392,7 @@
         }));
         localStorage.setItem('mes_setores', JSON.stringify(updated));
         alert('Setores atualizados com sucesso no sistema MES!');
+        updateApontamentoSetoresSelect(updated);
     }
 
     // Renderizar Programação Semanal
@@ -461,7 +446,7 @@
         if(data.length > 0) loadOPDetails(data[0].op);
     }
 
-    // Carregar dados dinâmicos na Ficha da OP selecionada
+    // Carregar dados e renderizar Código de Barras na OP selecionada
     function loadOPDetails(opCode) {
         const data = JSON.parse(localStorage.getItem('mes_programacao')) || defaultProgramacao;
         const opData = data.find(item => item.op === opCode);
@@ -473,7 +458,18 @@
             document.getElementById('op-card-qtd').innerText = `${opData.qtd} Unidades`;
             document.getElementById('op-card-dia').innerText = opData.dia;
             document.getElementById('op-card-status').innerText = opData.status;
-            document.getElementById('op-card-barcode').innerText = `*${opData.op}*`;
+
+            // Renderiza o Código de Barras padrão industrial CODE128
+            try {
+                JsBarcode("#op-barcode-canvas", opData.op, {
+                    format: "CODE128",
+                    width: 2,
+                    height: 60,
+                    displayValue: true
+                });
+            } catch (e) {
+                console.log("Aguardando carregamento da biblioteca JsBarcode...");
+            }
         }
     }
 
@@ -482,16 +478,22 @@
         window.print();
     }
 
-    // Lógica do Apontamento por Bip
+    // Lógica do Apontamento por Leitor de Código de Barras com registro de Setor
     function processarBip(event) {
         if (event.key === 'Enter' || event.keyCode === 13) {
             const barcodeValue = event.target.value.trim().toUpperCase();
             if (!barcodeValue) return;
 
+            const setorSelecionado = document.getElementById('apontamento-setor-select').value;
             const agora = new Date();
             const horaFormatada = agora.toLocaleTimeString('pt-BR');
 
-            const apontamentoAberto = apontamentos.find(item => item.op === barcodeValue && item.status === 'Em Andamento');
+            // Procura apontamento em andamento para a mesma OP no mesmo Setor
+            const apontamentoAberto = apontamentos.find(item => 
+                item.op === barcodeValue && 
+                item.setor === setorSelecionado && 
+                item.status === 'Em Andamento'
+            );
 
             if (apontamentoAberto) {
                 apontamentoAberto.fim = horaFormatada;
@@ -505,6 +507,7 @@
             } else {
                 apontamentos.push({
                     op: barcodeValue,
+                    setor: setorSelecionado,
                     operador: 'Operador 01',
                     inicio: horaFormatada,
                     timestampInicio: agora.getTime(),
@@ -530,6 +533,7 @@
             tbody.innerHTML += `
                 <tr>
                     <td><strong>${item.op}</strong></td>
+                    <td><span style="color: var(--primary-hover); font-weight: bold;">${item.setor || 'Geral'}</span></td>
                     <td>${item.operador}</td>
                     <td>${item.inicio}</td>
                     <td>${item.fim}</td>
@@ -560,6 +564,8 @@
             const data = JSON.parse(localStorage.getItem('mes_programacao')) || defaultProgramacao;
             updateOPSelector(data);
         } else if (tabId === 'atividades') {
+            const setoresData = JSON.parse(localStorage.getItem('mes_setores')) || defaultSetores;
+            updateApontamentoSetoresSelect(setoresData);
             setTimeout(() => {
                 document.getElementById('barcode-input').focus();
             }, 100);
