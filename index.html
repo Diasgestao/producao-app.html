@@ -303,19 +303,23 @@ const APP_DEFAULT = {
     {id:'OS002',numero:2,colaboradorId:'',setor:'Corte/Costura',produtoId:'T04',produtoNome:'Capa Estofado P',meta:60,status:'Pendente',abertura:'',fechamento:'',tempoMin:0,criadaEm:'06:00'},
   ],
   setores:[
-    {id:'S01',nome:'Tapeçaria A',familia:'tapecaria',responsavel:'Carlos Silva',cor:'#A78BFA'},
-    {id:'S02',nome:'Tapeçaria B',familia:'tapecaria',responsavel:'Marcos Ribeiro',cor:'#A78BFA'},
-    {id:'S03',nome:'Corte/Costura',familia:'tapecaria',responsavel:'Julia Ferreira',cor:'#A78BFA'},
-    {id:'S04',nome:'Linha MDF',familia:'marcenaria',responsavel:'Ana Paula',cor:'#38BDF8'},
-    {id:'S05',nome:'Montagem Final',familia:'marcenaria',responsavel:'Pedro Lima',cor:'#38BDF8'},
+    {id:'S01',nome:'Tapeçaria A',familia:'tapecaria',responsavel:'',cor:'#A78BFA'},
+    {id:'S02',nome:'Tapeçaria B',familia:'tapecaria',responsavel:'',cor:'#A78BFA'},
+    {id:'S03',nome:'Corte/Costura',familia:'tapecaria',responsavel:'',cor:'#A78BFA'},
+    {id:'S04',nome:'Linha MDF',familia:'marcenaria',responsavel:'',cor:'#38BDF8'},
+    {id:'S05',nome:'Montagem Final',familia:'marcenaria',responsavel:'',cor:'#38BDF8'},
   ],
   catalogo:{
     tapecaria:[{id:'T01',nome:'Sofá 3L Retrátil',ciclo:6,unidade:'pç'},{id:'T02',nome:'Poltrona Reclinável',ciclo:8,unidade:'pç'},{id:'T03',nome:'Sofá 2 Lugares',ciclo:5,unidade:'pç'},{id:'T04',nome:'Capa Estofado P',ciclo:3,unidade:'pç'},{id:'T05',nome:'Capa Estofado G',ciclo:4,unidade:'pç'}],
     marcenaria:[{id:'M01',nome:'Rack TV 1,80m',ciclo:3,unidade:'pç'},{id:'M02',nome:'Estante MDF',ciclo:4,unidade:'pç'},{id:'M03',nome:'Criado-Mudo',ciclo:2,unidade:'pç'},{id:'M04',nome:'Guarda-Roupa 6P',ciclo:8,unidade:'pç'}],
+    eletrica:[{id:'M01',nome:'',ciclo:3,unidade:'pç'},{id:'M02',nome:'',ciclo:4,unidade:'pç'},{id:'M03',nome:'',ciclo:2,unidade:'pç'},{id:'M04',nome:'',ciclo:8,unidade:'pç'}],
+    
   },
   programacao:{
-    tapecaria:[{linhaId:1,linhaNome:'Tapeçaria A',produtoId:'T01',meta:80},{linhaId:2,linhaNome:'Tapeçaria B',produtoId:'T02',meta:60},{linhaId:3,linhaNome:'Corte/Costura',produtoId:'T04',meta:60}],
-    marcenaria:[{linhaId:4,linhaNome:'Linha MDF',produtoId:'M01',meta:120},{linhaId:5,linhaNome:'Montagem Final',produtoId:'M01',meta:40}],
+    tapecaria:[{linhaId:1,linhaNome:'Preparação de espumas',produtoId:'T01',meta:80},{linhaId:2,linhaNome:'Modelagem',produtoId:'T02',meta:60},{linhaId:3,linhaNome:'Corte/Costura',produtoId:'T04',meta:60}],
+    marcenaria:[{linhaId:4,linhaNome:'Linha MDF',produtoId:'M01',meta:120},{linhaId:5,linhaNome:'',produtoId:'M01',meta:40}],
+    eletrica:[{linhaId:4,linhaNome:'chicotes',produtoId:'M01',meta:120},{linhaId:5,linhaNome:'Montagem bancadas',produtoId:'M01',meta:40}],
+    
   },
   familias:{
     tapecaria:{nome:'Tapeçaria',cor:'#A78BFA',icon:'🧵',oee:{disp:88,perf:76,qual:94},historico:[71,78,82,75,79],linhas:[{id:1,nome:'Tapeçaria A',status:'Produzindo',real:67,refugo:4,retrabalho:2},{id:2,nome:'Tapeçaria B',status:'Setup',real:0,refugo:0,retrabalho:0},{id:3,nome:'Corte/Costura',status:'Produzindo',real:55,refugo:3,retrabalho:1}]},
@@ -326,7 +330,7 @@ const APP_DEFAULT = {
     {id:'C002',nome:'Marcos Ribeiro',registro:'MAT-1042',setor:'Tapeçaria B',horarioEntrada:'06:00',horarioSaida:'14:00',ativo:true,presente:true,horaApontamento:'06:05'},
     {id:'C003',nome:'Julia Ferreira',registro:'MAT-1043',setor:'Corte/Costura',horarioEntrada:'06:00',horarioSaida:'14:00',ativo:true,presente:true,horaApontamento:'06:01'},
     {id:'C004',nome:'Ana Paula',registro:'MAT-1044',setor:'Linha MDF',horarioEntrada:'06:00',horarioSaida:'14:00',ativo:true,presente:true,horaApontamento:'06:03'},
-    {id:'C005',nome:'Pedro Lima',registro:'MAT-1045',setor:'Montagem Final',horarioEntrada:'06:00',horarioSaida:'14:00',ativo:true,presente:false,horaApontamento:''},
+    {id:'C005',nome:'Pedro Lima',registro:'MAT-1045',setor:'',horarioEntrada:'06:00',horarioSaida:'14:00',ativo:true,presente:false,horaApontamento:''},
   ],
   tarefas:[
     {id:'TF001',titulo:'Produção Sofá 3L',colaboradorId:'C001',setor:'Tapeçaria A',linha:'Tapeçaria A',atividade:'Costura estrutural',tempoPadrao:6,inicio:'06:00',status:'Em andamento',realizado:42,meta:80},
