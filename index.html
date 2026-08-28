@@ -336,6 +336,34 @@
     ];
 
     // Array Global de Apontamentos
+    // ... CÓDIGO ANTERIOR QUE JÁ EXISTE NO SEU ARQUIVO ...
+    }
+
+    // ==========================================
+    // AQUI VOCÊ SÓ ACRESCENTA (COLE ABAIXO):
+    // ==========================================
+    let apontamentos = JSON.parse(localStorage.getItem('mes_apontamentos')) || [];
+
+    function processarBip(event) {
+        // ... (código da função processarBip)
+    }
+
+    function renderApontamentos() {
+        // ... (código da função renderApontamentos)
+    }
+
+    function limparApontamentos() {
+        // ... (código da função limparApontamentos)
+    }
+    // ==========================================
+
+    // CÓDIGO QUE JÁ EXISTIA (Apenas acrescente a última linha):
+    renderSetores();
+    renderProgramacao();
+    renderApontamentos(); // <-- Acrescente apenas esta linha no final
+</script>
+</body>
+</html>
     let apontamentos = JSON.parse(localStorage.getItem('mes_apontamentos')) || [];
 
     // Renderizar Tabela de Setores Produtivos
